@@ -1,0 +1,16 @@
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  min-width: 100%;
+  min-height: 100vh;
+}
+
+body {
+  font-family:
+    "Microsoft YaHei",
+    "PingFang SC",
+    Arial,
+    sans-serif;
+}
