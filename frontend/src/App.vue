@@ -1,12 +1,12 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref, reactive } from 'vue'
 import * as echarts from 'echarts'
 
-const overview = {
-  jobCount: '1,000',
-  avgSalary: '13.6k',
-  hotIndustry: '软件开发'
-}
+const overview = reactive({
+  jobCount: '--',
+  avgSalary: '--',
+  hotIndustry: '加载中...'
+})
 
 const cities = [
   { name: '广州', value: 88 },
@@ -33,73 +33,125 @@ const handleResize = () => {
   chartInstance?.resize()
 }
 
-onMounted(() => {
-  chartInstance = echarts.init(trendChart.value)
+onMounted(async () => {
+  // 1. 获取 FastAPI 首页数据
+  try {
+    const response = await fetch('http://127.0.0.1:8000/api/overview')
 
-  chartInstance.setOption({
-    tooltip: {
-      trigger: 'axis'
-    },
-    grid: {
-      left: '8%',
-      right: '5%',
-      top: '10%',
-      bottom: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: ['4月', '5月', '6月', '7月', '8月', '9月'],
-      boundaryGap: false,
-      axisLine: {
-        lineStyle: {
-          color: '#d1d5db'
+    if (!response.ok) {
+      throw new Error('获取首页数据失败')
+    }
+
+    const data = await response.json()
+
+    overview.jobCount = data.job_count.toLocaleString()
+    overview.avgSalary = data.avg_salary
+    overview.hotIndustry = data.hot_industry
+  } catch (error) {
+    console.error('首页数据获取失败：', error)
+
+    overview.jobCount = '获取失败'
+    overview.avgSalary = '--'
+    overview.hotIndustry = '获取失败'
+  }
+
+  // 2. 初始化行业热度趋势图
+  if (trendChart.value) {
+    chartInstance = echarts.init(trendChart.value)
+
+    chartInstance.setOption({
+      tooltip: {
+        trigger: 'axis'
+      },
+
+      grid: {
+        left: '8%',
+        right: '5%',
+        top: '12%',
+        bottom: '15%',
+        containLabel: true
+      },
+
+      xAxis: {
+        type: 'category',
+        data: ['4月', '5月', '6月', '7月', '8月', '9月'],
+        boundaryGap: false,
+
+        axisLine: {
+          lineStyle: {
+            color: '#d1d5db'
+          }
+        },
+
+        axisLabel: {
+          color: '#6b7280'
         }
       },
-      axisLabel: {
-        color: '#6b7280'
-      }
-    },
-    yAxis: {
-      type: 'value',
-      name: '岗位热度',
-      axisLabel: {
-        color: '#6b7280'
-      },
-      splitLine: {
-        lineStyle: {
-          color: '#eef2f7'
-        }
-      }
-    },
-    series: [
-      {
+
+      yAxis: {
+        type: 'value',
         name: '岗位热度',
-        type: 'line',
-        smooth: true,
-        data: [420, 510, 480, 620, 670, 760],
-        symbolSize: 8,
-        lineStyle: {
-          width: 3,
-          color: '#3b82f6'
+
+        axisLabel: {
+          color: '#6b7280'
         },
-        itemStyle: {
-          color: '#3b82f6'
+
+        axisLine: {
+          show: false
         },
-        areaStyle: {
-          color: '#bfdbfe',
-          opacity: 0.25
+
+        axisTick: {
+          show: false
+        },
+
+        splitLine: {
+          lineStyle: {
+            color: '#eef2f7'
+          }
         }
-      }
-    ]
-  })
+      },
+
+      series: [
+        {
+          name: '岗位热度',
+          type: 'line',
+          smooth: true,
+
+          data: [420, 510, 480, 620, 670, 760],
+
+          symbol: 'circle',
+          symbolSize: 8,
+
+          lineStyle: {
+            width: 3,
+            color: '#3b82f6'
+          },
+
+          itemStyle: {
+            color: '#3b82f6',
+            borderColor: '#ffffff',
+            borderWidth: 2
+          },
+
+          areaStyle: {
+            color: '#bfdbfe',
+            opacity: 0.28
+          }
+        }
+      ]
+    })
+  }
 
   window.addEventListener('resize', handleResize)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', handleResize)
-  chartInstance?.dispose()
+
+  if (chartInstance) {
+    chartInstance.dispose()
+    chartInstance = null
+  }
 })
 </script>
 
@@ -113,37 +165,67 @@ onBeforeUnmount(() => {
       </div>
 
       <nav>
-        <div class="nav-item active">首页 · 总览</div>
-        <div class="nav-item">AI 问答</div>
-        <div class="nav-item">技能测评</div>
-        <div class="nav-item">岗位推荐</div>
-        <div class="nav-item">趋势分析</div>
-        <div class="nav-item">历史记录</div>
+        <div class="nav-item active">
+          首页 · 总览
+        </div>
+
+        <div class="nav-item">
+          AI 问答
+        </div>
+
+        <div class="nav-item">
+          技能测评
+        </div>
+
+        <div class="nav-item">
+          岗位推荐
+        </div>
+
+        <div class="nav-item">
+          趋势分析
+        </div>
+
+        <div class="nav-item">
+          历史记录
+        </div>
       </nav>
     </aside>
 
-    <!-- 主内容 -->
+    <!-- 主内容区域 -->
     <main class="main">
+      <!-- 页面标题 -->
       <header class="page-header">
         <h1>就业市场总览</h1>
-        <span>CareerLens · 就业数据分析平台</span>
+
+        <span>
+          CareerLens · 就业数据分析平台
+        </span>
       </header>
 
       <!-- 顶部统计卡片 -->
       <section class="cards">
         <div class="card">
           <p>岗位总量</p>
-          <strong>{{ overview.jobCount }}</strong>
+
+          <strong>
+            {{ overview.jobCount }}
+          </strong>
         </div>
 
         <div class="card">
           <p>平均薪资</p>
-          <strong>¥{{ overview.avgSalary }}</strong>
+
+          <strong>
+            ¥{{ overview.avgSalary }}k
+          </strong>
         </div>
 
         <div class="card">
           <p>热门行业</p>
-          <strong>{{ overview.hotIndustry }}</strong>
+
+          <strong>
+            {{ overview.hotIndustry }}
+          </strong>
         </div>
       </section>
 
@@ -158,7 +240,9 @@ onBeforeUnmount(() => {
             :key="city.name"
             class="city-row"
           >
-            <span>{{ city.name }}</span>
+            <span class="city-name">
+              {{ city.name }}
+            </span>
 
             <div class="bar-bg">
               <div
@@ -169,7 +253,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <!-- 薪资区间 -->
+        <!-- 薪资区间分布 -->
         <div class="panel">
           <h3>薪资区间分布</h3>
 
@@ -204,7 +288,11 @@ onBeforeUnmount(() => {
         <!-- 行业热度趋势 -->
         <div class="panel">
           <h3>行业热度趋势</h3>
-          <div ref="trendChart" class="trend-chart"></div>
+
+          <div
+            ref="trendChart"
+            class="trend-chart"
+          ></div>
         </div>
 
         <!-- 高频技能 -->
@@ -238,6 +326,8 @@ onBeforeUnmount(() => {
   color: #1f2937;
 }
 
+/* 左侧导航 */
+
 .sidebar {
   width: 220px;
   min-height: 100vh;
@@ -249,6 +339,7 @@ onBeforeUnmount(() => {
 .brand h2 {
   margin: 0;
   font-size: 22px;
+  color: #111827;
 }
 
 .brand p {
@@ -263,10 +354,12 @@ onBeforeUnmount(() => {
   border-radius: 10px;
   color: #6b7280;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .nav-item:hover {
   background: #f3f4f6;
+  color: #2563eb;
 }
 
 .nav-item.active {
@@ -274,6 +367,8 @@ onBeforeUnmount(() => {
   color: #2563eb;
   font-weight: 600;
 }
+
+/* 主内容 */
 
 .main {
   flex: 1;
@@ -290,12 +385,15 @@ onBeforeUnmount(() => {
 .page-header h1 {
   margin: 0;
   font-size: 28px;
+  color: #111827;
 }
 
 .page-header span {
   color: #9ca3af;
   font-size: 14px;
 }
+
+/* 顶部卡片 */
 
 .cards {
   display: grid;
@@ -314,12 +412,16 @@ onBeforeUnmount(() => {
 .card p {
   margin: 0 0 12px;
   color: #6b7280;
+  font-size: 16px;
 }
 
 .card strong {
   font-size: 30px;
   font-weight: 600;
+  color: #111827;
 }
+
+/* 四宫格 */
 
 .grid {
   display: grid;
@@ -338,7 +440,10 @@ onBeforeUnmount(() => {
 .panel h3 {
   margin: 0 0 24px;
   font-size: 19px;
+  color: #111827;
 }
+
+/* 城市岗位 */
 
 .city-row {
   display: flex;
@@ -347,8 +452,9 @@ onBeforeUnmount(() => {
   margin: 22px 0;
 }
 
-.city-row span {
+.city-name {
   width: 44px;
+  flex-shrink: 0;
 }
 
 .bar-bg {
@@ -364,6 +470,8 @@ onBeforeUnmount(() => {
   background: #3b82f6;
   border-radius: 999px;
 }
+
+/* 薪资分布 */
 
 .salary-chart {
   height: 190px;
@@ -410,10 +518,14 @@ onBeforeUnmount(() => {
   height: 45px;
 }
 
+/* 趋势图 */
+
 .trend-chart {
   width: 100%;
   height: 190px;
 }
+
+/* 高频技能 */
 
 .skill-list {
   display: flex;
@@ -426,5 +538,17 @@ onBeforeUnmount(() => {
   background: #eff6ff;
   color: #2563eb;
   border-radius: 8px;
+}
+
+/* 小屏幕适配 */
+
+@media (max-width: 1000px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
