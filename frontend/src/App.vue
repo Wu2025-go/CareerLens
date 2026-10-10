@@ -8,6 +8,14 @@ import {
 } from 'vue'
 
 import * as echarts from 'echarts'
+import AskPage from './components/AskPage.vue'
+
+
+/* =========================
+   页面切换
+========================= */
+
+const activePage = ref('dashboard')
 
 
 /* =========================
@@ -47,12 +55,17 @@ const maxSalaryValue = computed(() => {
   }
 
   return Math.max(
-    ...salaryDistribution.value.map(item => item.value)
+    ...salaryDistribution.value.map(
+      item => item.value
+    )
   )
 })
 
+
 const getSalaryHeight = (value) => {
-  return `${(value / maxSalaryValue.value) * 150}px`
+  return `${
+    (value / maxSalaryValue.value) * 150
+  }px`
 }
 
 
@@ -76,7 +89,8 @@ const renderTrendChart = () => {
   }
 
   if (!chartInstance) {
-    chartInstance = echarts.init(trendChart.value)
+    chartInstance =
+      echarts.init(trendChart.value)
   }
 
   chartInstance.setOption({
@@ -175,24 +189,31 @@ const renderTrendChart = () => {
 
 onMounted(async () => {
   try {
-    /* 同时请求两个接口 */
-
     const [
       overviewResponse,
       dashboardResponse
     ] = await Promise.all([
-      fetch('http://127.0.0.1:8000/api/overview'),
+      fetch(
+        'http://127.0.0.1:8000/api/overview'
+      ),
 
-      fetch('http://127.0.0.1:8000/api/dashboard')
+      fetch(
+        'http://127.0.0.1:8000/api/dashboard'
+      )
     ])
 
 
     if (!overviewResponse.ok) {
-      throw new Error('获取 overview 数据失败')
+      throw new Error(
+        '获取 overview 数据失败'
+      )
     }
 
+
     if (!dashboardResponse.ok) {
-      throw new Error('获取 dashboard 数据失败')
+      throw new Error(
+        '获取 dashboard 数据失败'
+      )
     }
 
 
@@ -201,11 +222,14 @@ onMounted(async () => {
     const overviewData =
       await overviewResponse.json()
 
+
     overview.jobCount =
       overviewData.job_count.toLocaleString()
 
+
     overview.avgSalary =
       `${overviewData.avg_salary}k`
+
 
     overview.hotIndustry =
       overviewData.hot_industry
@@ -242,7 +266,6 @@ onMounted(async () => {
     renderTrendChart()
 
   } catch (error) {
-
     console.error(
       '首页数据加载失败：',
       error
@@ -268,14 +291,12 @@ onMounted(async () => {
 ========================= */
 
 onBeforeUnmount(() => {
-
   window.removeEventListener(
     'resize',
     handleResize
   )
 
   if (chartInstance) {
-
     chartInstance.dispose()
 
     chartInstance = null
@@ -285,15 +306,15 @@ onBeforeUnmount(() => {
 
 
 <template>
-
   <div class="app">
 
-    <!-- 左侧导航 -->
+    <!-- =====================
+         左侧导航
+    ====================== -->
 
     <aside class="sidebar">
 
       <div class="brand">
-
         <h2>
           CareerLens
         </h2>
@@ -301,31 +322,53 @@ onBeforeUnmount(() => {
         <p>
           职见
         </p>
-
       </div>
 
 
       <nav>
 
-        <div class="nav-item active">
+        <div
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'dashboard'
+          }"
+          @click="
+            activePage = 'dashboard'
+          "
+        >
           首页 · 总览
         </div>
 
-        <div class="nav-item">
+
+        <div
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'ask'
+          }"
+          @click="
+            activePage = 'ask'
+          "
+        >
           AI 问答
         </div>
+
 
         <div class="nav-item">
           技能测评
         </div>
 
+
         <div class="nav-item">
           岗位推荐
         </div>
 
+
         <div class="nav-item">
           趋势分析
         </div>
+
 
         <div class="nav-item">
           历史记录
@@ -336,209 +379,230 @@ onBeforeUnmount(() => {
     </aside>
 
 
-    <!-- 主内容 -->
+    <!-- =====================
+         主内容
+    ====================== -->
 
     <main class="main">
 
+      <!-- =====================
+           首页 Dashboard
+      ====================== -->
 
-      <!-- 标题 -->
+      <div
+        v-show="
+          activePage === 'dashboard'
+        "
+        class="dashboard-page"
+      >
 
-      <header class="page-header">
+        <!-- 页面标题 -->
 
-        <h1>
-          就业市场总览
-        </h1>
+        <header class="page-header">
 
-        <span>
-          CareerLens · 就业数据分析平台
-        </span>
-
-      </header>
-
-
-      <!-- 顶部统计 -->
-
-      <section class="cards">
-
-
-        <div class="card">
-
-          <p>
-            岗位总量
-          </p>
-
-          <strong>
-            {{ overview.jobCount }}
-          </strong>
-
-        </div>
+          <h1>
+            就业市场总览
+          </h1>
 
 
-        <div class="card">
+          <span>
+            CareerLens · 就业数据分析平台
+          </span>
 
-          <p>
-            平均薪资
-          </p>
-
-          <strong>
-            ¥{{ overview.avgSalary }}
-          </strong>
-
-        </div>
+        </header>
 
 
-        <div class="card">
+        <!-- 顶部统计 -->
 
-          <p>
-            热门行业
-          </p>
+        <section class="cards">
 
-          <strong>
-            {{ overview.hotIndustry }}
-          </strong>
+          <div class="card">
 
-        </div>
+            <p>
+              岗位总量
+            </p>
 
+            <strong>
+              {{ overview.jobCount }}
+            </strong>
 
-      </section>
-
-
-      <!-- 四个分析模块 -->
-
-      <section class="grid">
+          </div>
 
 
-        <!-- 城市岗位 -->
+          <div class="card">
 
-        <div class="panel">
+            <p>
+              平均薪资
+            </p>
 
-          <h3>
-            城市岗位分布
-          </h3>
+            <strong>
+              ¥{{ overview.avgSalary }}
+            </strong>
 
-
-          <div
-            v-for="city in cities"
-            :key="city.name"
-            class="city-row"
-          >
-
-            <span class="city-name">
-
-              {{ city.name }}
-
-            </span>
+          </div>
 
 
-            <div class="bar-bg">
+          <div class="card">
 
-              <div
-                class="bar"
-                :style="{
-                  width:
-                    city.value + '%'
-                }"
-              >
+            <p>
+              热门行业
+            </p>
+
+            <strong>
+              {{ overview.hotIndustry }}
+            </strong>
+
+          </div>
+
+        </section>
+
+
+        <!-- 四个分析模块 -->
+
+        <section class="grid">
+
+          <!-- 城市岗位分布 -->
+
+          <div class="panel">
+
+            <h3>
+              城市岗位分布
+            </h3>
+
+
+            <div
+              v-for="city in cities"
+              :key="city.name"
+              class="city-row"
+            >
+
+              <span class="city-name">
+                {{ city.name }}
+              </span>
+
+
+              <div class="bar-bg">
+
+                <div
+                  class="bar"
+                  :style="{
+                    width:
+                      city.value + '%'
+                  }"
+                >
+                </div>
+
               </div>
 
             </div>
 
           </div>
 
-        </div>
+
+          <!-- 薪资区间 -->
+
+          <div class="panel">
+
+            <h3>
+              薪资区间分布
+            </h3>
 
 
-        <!-- 薪资 -->
+            <div class="salary-chart">
 
-        <div class="panel">
+              <div
+                v-for="
+                  item in
+                  salaryDistribution
+                "
+                :key="item.range"
+                class="salary-item"
+              >
 
-          <h3>
-            薪资区间分布
-          </h3>
+                <div
+                  class="salary-bar"
+                  :style="{
+                    height:
+                      getSalaryHeight(
+                        item.value
+                      )
+                  }"
+                >
+                </div>
 
 
-          <div class="salary-chart">
+                <span>
+                  {{ item.range }}
+                </span>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- 行业热度趋势 -->
+
+          <div class="panel">
+
+            <h3>
+              行业热度趋势
+            </h3>
 
 
             <div
-              v-for="item in salaryDistribution"
-              :key="item.range"
-              class="salary-item"
+              ref="trendChart"
+              class="trend-chart"
             >
+            </div>
 
-              <div
-                class="salary-bar"
-                :style="{
-                  height:
-                    getSalaryHeight(item.value)
-                }"
+          </div>
+
+
+          <!-- 高频技能 -->
+
+          <div class="panel">
+
+            <h3>
+              高频技能
+            </h3>
+
+
+            <div class="skill-list">
+
+              <span
+                v-for="
+                  skill in skills
+                "
+                :key="skill"
+                class="skill"
               >
-              </div>
-
-              <span>
-                {{ item.range }}
+                {{ skill }}
               </span>
 
             </div>
 
-
           </div>
 
-        </div>
+        </section>
+
+      </div>
 
 
-        <!-- 趋势 -->
+      <!-- =====================
+           AI 问答页面
+      ====================== -->
 
-        <div class="panel">
-
-          <h3>
-            行业热度趋势
-          </h3>
-
-
-          <div
-            ref="trendChart"
-            class="trend-chart"
-          >
-          </div>
-
-        </div>
-
-
-        <!-- 技能 -->
-
-        <div class="panel">
-
-          <h3>
-            高频技能
-          </h3>
-
-
-          <div class="skill-list">
-
-
-            <span
-              v-for="skill in skills"
-              :key="skill"
-              class="skill"
-            >
-
-              {{ skill }}
-
-            </span>
-
-
-          </div>
-
-        </div>
-
-
-      </section>
+      <AskPage
+        v-if="
+          activePage === 'ask'
+        "
+      />
 
     </main>
 
   </div>
-
 </template>
 
 
@@ -549,14 +613,14 @@ onBeforeUnmount(() => {
 }
 
 
+/* =========================
+   整体
+========================= */
+
 .app {
-
   display: flex;
-
   min-height: 100vh;
-
   background: #f6f8fb;
-
   color: #1f2937;
 }
 
@@ -566,69 +630,49 @@ onBeforeUnmount(() => {
 ========================= */
 
 .sidebar {
-
   width: 220px;
-
   min-height: 100vh;
-
   padding: 30px 22px;
-
   background: #ffffff;
-
   border-right: 1px solid #e5e7eb;
+  flex-shrink: 0;
 }
 
 
 .brand h2 {
-
   margin: 0;
-
   font-size: 22px;
-
   color: #111827;
 }
 
 
 .brand p {
-
   margin: 6px 0 30px;
-
   font-size: 18px;
-
   color: #2563eb;
 }
 
 
 .nav-item {
-
   padding: 13px 16px;
-
   margin-bottom: 8px;
-
   border-radius: 10px;
-
   color: #6b7280;
-
   cursor: pointer;
-
   transition: all 0.2s ease;
+  user-select: none;
 }
 
 
 .nav-item:hover {
-
   background: #f3f4f6;
-
   color: #2563eb;
 }
 
 
 .nav-item.active {
-
   background: #eff6ff;
-
   color: #2563eb;
-
   font-weight: 600;
 }
 
@@ -638,39 +682,38 @@ onBeforeUnmount(() => {
 ========================= */
 
 .main {
-
   flex: 1;
-
+  min-width: 0;
   padding: 34px;
 }
 
 
+.dashboard-page {
+  width: 100%;
+}
+
+
+/* =========================
+   页面标题
+========================= */
+
 .page-header {
-
   display: flex;
-
   align-items: center;
-
   justify-content: space-between;
-
   margin-bottom: 28px;
 }
 
 
 .page-header h1 {
-
   margin: 0;
-
   font-size: 28px;
-
   color: #111827;
 }
 
 
 .page-header span {
-
   color: #9ca3af;
-
   font-size: 14px;
 }
 
@@ -680,46 +723,32 @@ onBeforeUnmount(() => {
 ========================= */
 
 .cards {
-
   display: grid;
-
   grid-template-columns:
     repeat(3, 1fr);
-
   gap: 18px;
-
   margin-bottom: 20px;
 }
 
 
 .card {
-
   padding: 24px;
-
   background: #ffffff;
-
   border: 1px solid #e5e7eb;
-
   border-radius: 14px;
 }
 
 
 .card p {
-
   margin: 0 0 12px;
-
   color: #6b7280;
-
   font-size: 16px;
 }
 
 
 .card strong {
-
   font-size: 30px;
-
   font-weight: 600;
-
   color: #111827;
 }
 
@@ -729,36 +758,25 @@ onBeforeUnmount(() => {
 ========================= */
 
 .grid {
-
   display: grid;
-
   grid-template-columns:
     repeat(2, 1fr);
-
   gap: 20px;
 }
 
 
 .panel {
-
   min-height: 280px;
-
   padding: 22px;
-
   background: #ffffff;
-
   border: 1px solid #e5e7eb;
-
   border-radius: 14px;
 }
 
 
 .panel h3 {
-
   margin: 0 0 24px;
-
   font-size: 19px;
-
   color: #111827;
 }
 
@@ -768,46 +786,33 @@ onBeforeUnmount(() => {
 ========================= */
 
 .city-row {
-
   display: flex;
-
   align-items: center;
-
   gap: 14px;
-
   margin: 22px 0;
 }
 
 
 .city-name {
-
   width: 44px;
-
   flex-shrink: 0;
 }
 
 
 .bar-bg {
-
   flex: 1;
-
   height: 12px;
-
   overflow: hidden;
-
   background: #eef2f7;
-
   border-radius: 999px;
 }
 
 
 .bar {
-
   height: 100%;
-
   background: #3b82f6;
-
   border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 
@@ -816,48 +821,32 @@ onBeforeUnmount(() => {
 ========================= */
 
 .salary-chart {
-
   height: 190px;
-
   display: flex;
-
   align-items: flex-end;
-
   justify-content: space-around;
-
   padding-top: 20px;
 }
 
 
 .salary-item {
-
   height: 100%;
-
   display: flex;
-
   flex-direction: column;
-
   justify-content: flex-end;
-
   align-items: center;
-
   gap: 10px;
-
   color: #6b7280;
-
   font-size: 13px;
 }
 
 
 .salary-bar {
-
   width: 48px;
-
   background: #60a5fa;
-
   border-radius: 6px 6px 0 0;
-
-  transition: height 0.3s ease;
+  transition:
+    height 0.3s ease;
 }
 
 
@@ -866,9 +855,7 @@ onBeforeUnmount(() => {
 ========================= */
 
 .trend-chart {
-
   width: 100%;
-
   height: 190px;
 }
 
@@ -878,23 +865,16 @@ onBeforeUnmount(() => {
 ========================= */
 
 .skill-list {
-
   display: flex;
-
   flex-wrap: wrap;
-
   gap: 14px;
 }
 
 
 .skill {
-
   padding: 9px 14px;
-
   background: #eff6ff;
-
   color: #2563eb;
-
   border-radius: 8px;
 }
 
@@ -906,14 +886,45 @@ onBeforeUnmount(() => {
 @media (max-width: 1000px) {
 
   .cards {
-
     grid-template-columns: 1fr;
   }
 
 
   .grid {
-
     grid-template-columns: 1fr;
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .app {
+    display: block;
+  }
+
+
+  .sidebar {
+    width: 100%;
+    min-height: auto;
+    padding: 18px;
+  }
+
+
+  .brand p {
+    margin-bottom: 18px;
+  }
+
+
+  .main {
+    padding: 20px;
+  }
+
+
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
 }
