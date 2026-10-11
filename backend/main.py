@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 
 # =========================
-# 请求数据模型
+# 请求模型
 # =========================
 
 class AskRequest(BaseModel):
@@ -23,7 +23,7 @@ class AskRequest(BaseModel):
 app = FastAPI(
     title="CareerLens API",
     description="CareerLens 职见后端服务",
-    version="0.3.0"
+    version="0.4.0"
 )
 
 
@@ -69,15 +69,20 @@ def load_jobs():
         )
 
     try:
-        df = pd.read_csv(CSV_PATH)
+        return pd.read_csv(CSV_PATH)
 
     except UnicodeDecodeError:
-        df = pd.read_csv(
-            CSV_PATH,
-            encoding="gbk"
-        )
+        try:
+            return pd.read_csv(
+                CSV_PATH,
+                encoding="gb18030"
+            )
 
-    return df
+        except UnicodeDecodeError:
+            return pd.read_csv(
+                CSV_PATH,
+                encoding="gbk"
+            )
 
 
 # =========================
@@ -86,12 +91,12 @@ def load_jobs():
 
 def salary_to_k(value):
     """
-    将薪资统一换算成 k/月。
+    将薪资统一转换为 k/月。
 
     例如：
-    6000 -> 6
+    6000  -> 6
     15000 -> 15
-    13.5 -> 13.5
+    13.5  -> 13.5
     """
 
     try:
@@ -119,14 +124,6 @@ def split_skills(value):
     if not text:
         return []
 
-    # 支持：
-    # |
-    # ,
-    # ，
-    # 、
-    # ;
-    # ；
-    # /
     parts = re.split(
         r"[|,，、;/；]+",
         text
@@ -156,24 +153,15 @@ def root():
 
 @app.get("/api/overview")
 def get_overview():
-
     df = load_jobs()
 
-    # -------------------------
-    # 1. 岗位总量
-    # -------------------------
-
+    # 岗位总量
     job_count = len(df)
 
-
-    # -------------------------
-    # 2. 平均薪资
-    # -------------------------
-
+    # 平均薪资
     salary_values = []
 
     for _, row in df.iterrows():
-
         salary_min = salary_to_k(
             row.get("salary_min")
         )
@@ -200,15 +188,8 @@ def get_overview():
         else 0
     )
 
-
-    # -------------------------
-    # 3. 热门行业
-    # -------------------------
-
-    # 当前 CSV 暂时没有 industry 字段。
-    # 后面可以根据 job_title 自动归类。
+    # 当前数据暂时没有 industry 字段
     hot_industry = "软件开发"
-
 
     return {
         "job_count": int(job_count),
@@ -223,7 +204,6 @@ def get_overview():
 
 @app.get("/api/dashboard")
 def get_dashboard():
-
     df = load_jobs()
 
 
@@ -231,37 +211,37 @@ def get_dashboard():
     # 1. 城市岗位分布
     # =========================
 
-    city_counts = (
-        df["city"]
-        .dropna()
-        .astype(str)
-        .str.strip()
-        .value_counts()
-    )
-
-    top_cities = city_counts.head(6)
-
-    max_city_count = (
-        int(top_cities.max())
-        if not top_cities.empty
-        else 1
-    )
-
     cities = []
 
-    for city, count in top_cities.items():
-
-        percentage = round(
-            int(count)
-            / max_city_count
-            * 100
+    if "city" in df.columns:
+        city_counts = (
+            df["city"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .value_counts()
         )
 
-        cities.append({
-            "name": city,
-            "count": int(count),
-            "value": percentage
-        })
+        top_cities = city_counts.head(6)
+
+        max_city_count = (
+            int(top_cities.max())
+            if not top_cities.empty
+            else 1
+        )
+
+        for city, count in top_cities.items():
+            percentage = round(
+                int(count)
+                / max_city_count
+                * 100
+            )
+
+            cities.append({
+                "name": city,
+                "count": int(count),
+                "value": percentage
+            })
 
 
     # =========================
@@ -271,7 +251,6 @@ def get_dashboard():
     salary_midpoints = []
 
     for _, row in df.iterrows():
-
         salary_min = salary_to_k(
             row.get("salary_min")
         )
@@ -299,7 +278,6 @@ def get_dashboard():
 
 
     for salary in salary_midpoints:
-
         if salary < 5:
             salary_bins["5k以下"] += 1
 
@@ -333,12 +311,8 @@ def get_dashboard():
     skill_counter = Counter()
 
     if "skills" in df.columns:
-
         for value in df["skills"]:
-
-            row_skills = split_skills(value)
-
-            for skill in row_skills:
+            for skill in split_skills(value):
                 skill_counter[skill] += 1
 
 
@@ -357,7 +331,6 @@ def get_dashboard():
     values = []
 
     if "publish_date" in df.columns:
-
         dates = pd.to_datetime(
             df["publish_date"],
             errors="coerce"
@@ -366,7 +339,6 @@ def get_dashboard():
         valid_dates = dates.dropna()
 
         if not valid_dates.empty:
-
             month_counts = (
                 valid_dates
                 .dt.to_period("M")
@@ -403,12 +375,11 @@ def get_dashboard():
 
 
 # =========================
-# AI / RAG 检索问答
+# AI / RAG 问答
 # =========================
 
 @app.post("/api/ask")
 def ask_question(request: AskRequest):
-
     question = request.question.strip()
 
     if not question:
@@ -423,13 +394,12 @@ def ask_question(request: AskRequest):
 
 
     # =========================
-    # 1. 识别用户指定城市
+    # 1. 识别城市
     # =========================
 
     target_city = None
 
     if "city" in df.columns:
-
         all_cities = (
             df["city"]
             .dropna()
@@ -440,53 +410,44 @@ def ask_question(request: AskRequest):
         )
 
         for city in all_cities:
-
             if city and city in question:
-
                 target_city = city
-
                 break
 
 
-    # 如果用户明确指定城市，
-    # 只在对应城市中检索
-    if target_city:
-
-        search_df = df[
-            df["city"]
-            .astype(str)
-            .str.strip()
-            == target_city
-        ]
-
-    else:
-
-        search_df = df
-
-
     # =========================
-    # 2. 技术关键词
+    # 2. 核心技术关键词
     # =========================
 
-    keywords = [
-        "Java",
-        "Python",
-        "SQL",
-        "Linux",
-        "Go",
-        "K8s",
-        "Spring",
+    core_keywords = [
+        "Spring Cloud",
         "Spring Boot",
-        "MySQL",
-        "Redis",
-        "Docker",
-        "Vue",
-        "React",
         "JavaScript",
         "数据分析",
         "数据清洗",
         "机器学习",
         "深度学习",
+        "Python",
+        "Java",
+        "SQL",
+        "Linux",
+        "K8s",
+        "Spring",
+        "MySQL",
+        "Redis",
+        "Kafka",
+        "Docker",
+        "Vue",
+        "React",
+        "Go"
+    ]
+
+
+    # =========================
+    # 3. 岗位方向关键词
+    # =========================
+
+    role_keywords = [
         "前端",
         "后端",
         "开发",
@@ -497,14 +458,35 @@ def ask_question(request: AskRequest):
 
 
     # =========================
-    # 3. 检索岗位
+    # 4. 提取问题核心关键词
     # =========================
 
-    results = []
+    requested_core_keywords = []
+
+    for keyword in core_keywords:
+        if keyword.lower() in question_lower:
+            requested_core_keywords.append(
+                keyword
+            )
 
 
-    for _, row in search_df.iterrows():
+    # JavaScript 中包含 Java，
+    # 避免误认为用户同时问 Java
+    if (
+        "JavaScript" in requested_core_keywords
+        and
+        "Java" in requested_core_keywords
+    ):
+        requested_core_keywords.remove(
+            "Java"
+        )
 
+
+    # =========================
+    # 5. 单条岗位评分
+    # =========================
+
+    def score_job(row):
         job_title = str(
             row.get(
                 "job_title",
@@ -515,13 +497,6 @@ def ask_question(request: AskRequest):
         company_name = str(
             row.get(
                 "company_name",
-                ""
-            )
-        ).strip()
-
-        job_description = str(
-            row.get(
-                "job_description",
                 ""
             )
         ).strip()
@@ -547,6 +522,12 @@ def ask_question(request: AskRequest):
             )
         ).strip()
 
+        job_description = str(
+            row.get(
+                "job_description",
+                ""
+            )
+        ).strip()
 
         row_skills = split_skills(
             row.get(
@@ -559,7 +540,6 @@ def ask_question(request: AskRequest):
         searchable_text = " ".join([
             job_title,
             company_name,
-            city,
             education,
             experience,
             job_description,
@@ -571,18 +551,42 @@ def ask_question(request: AskRequest):
 
         matched_skills = []
 
+        matched_core_keywords = []
 
-        # -------------------------
-        # 技能直接匹配
-        # -------------------------
+
+        # =========================
+        # 核心技术关键词匹配
+        # =========================
+
+        for keyword in requested_core_keywords:
+            if (
+                keyword.lower()
+                in searchable_text
+            ):
+                score += 5
+
+                matched_core_keywords.append(
+                    keyword
+                )
+
+
+        # 如果用户明确指定技术，
+        # 但岗位完全不含这些技术，
+        # 直接排除。
+        if (
+            requested_core_keywords
+            and
+            not matched_core_keywords
+        ):
+            return None
+
+
+        # =========================
+        # skills 字段直接匹配
+        # =========================
 
         for skill in row_skills:
-
-            if (
-                skill.lower()
-                in question_lower
-            ):
-
+            if skill.lower() in question_lower:
                 score += 4
 
                 matched_skills.append(
@@ -590,26 +594,18 @@ def ask_question(request: AskRequest):
                 )
 
 
-        # -------------------------
-        # 技术关键词匹配
-        # -------------------------
+        # =========================
+        # 岗位方向匹配
+        # =========================
 
-        for keyword in keywords:
-
+        for role in role_keywords:
             if (
-                keyword.lower()
-                in question_lower
+                role in question
                 and
-                keyword.lower()
-                in searchable_text
+                role in searchable_text
             ):
-
                 score += 2
 
-
-        # -------------------------
-        # 岗位方向匹配
-        # -------------------------
 
         if (
             "后端" in question
@@ -628,18 +624,9 @@ def ask_question(request: AskRequest):
 
 
         if (
-            "开发" in question
-            and
-            "开发" in job_title
-        ):
-            score += 2
-
-
-        if (
             "数据分析" in question
             and
-            "数据分析"
-            in searchable_text
+            "数据分析" in searchable_text
         ):
             score += 3
 
@@ -647,88 +634,102 @@ def ask_question(request: AskRequest):
         if (
             "算法" in question
             and
-            "算法"
-            in searchable_text
+            "算法" in searchable_text
         ):
             score += 3
 
 
-        # -------------------------
-        # 保存有效结果
-        # -------------------------
+        if score <= 0:
+            return None
 
-        if score > 0:
 
-            results.append({
-                "score": int(score),
+        salary_min = row.get(
+            "salary_min"
+        )
 
-                "job_id":
-                    str(
-                        row.get(
-                            "job_id",
-                            ""
-                        )
-                    ),
+        salary_max = row.get(
+            "salary_max"
+        )
 
-                "job_title":
-                    job_title,
 
-                "company_name":
-                    company_name,
+        return {
+            "score":
+                int(score),
 
-                "city":
-                    city,
-
-                "salary_min":
-                    float(
-                        row.get(
-                            "salary_min",
-                            0
-                        )
+            "job_id":
+                str(
+                    row.get(
+                        "job_id",
+                        ""
                     )
-                    if pd.notna(
-                        row.get(
-                            "salary_min"
-                        )
+                ),
+
+            "job_title":
+                job_title,
+
+            "company_name":
+                company_name,
+
+            "city":
+                city,
+
+            "salary_min":
+                float(salary_min)
+                if pd.notna(salary_min)
+                else None,
+
+            "salary_max":
+                float(salary_max)
+                if pd.notna(salary_max)
+                else None,
+
+            "education":
+                education,
+
+            "experience":
+                experience,
+
+            "skills":
+                str(
+                    row.get(
+                        "skills",
+                        ""
                     )
-                    else None,
+                ),
 
-                "salary_max":
-                    float(
-                        row.get(
-                            "salary_max",
-                            0
-                        )
-                    )
-                    if pd.notna(
-                        row.get(
-                            "salary_max"
-                        )
-                    )
-                    else None,
+            "matched_skills":
+                matched_skills,
 
-                "education":
-                    education,
-
-                "experience":
-                    experience,
-
-                "skills":
-                    str(
-                        row.get(
-                            "skills",
-                            ""
-                        )
-                    ),
-
-                "matched_skills":
-                    matched_skills
-            })
+            "matched_keywords":
+                matched_core_keywords
+        }
 
 
     # =========================
-    # 4. 按匹配分数排序
+    # 6. 首次严格城市检索
     # =========================
+
+    if target_city:
+        search_df = df[
+            df["city"]
+            .astype(str)
+            .str.strip()
+            == target_city
+        ]
+
+    else:
+        search_df = df
+
+
+    results = []
+
+
+    for _, row in search_df.iterrows():
+        result = score_job(row)
+
+        if result:
+            results.append(result)
+
 
     results.sort(
         key=lambda item:
@@ -737,31 +738,90 @@ def ask_question(request: AskRequest):
     )
 
 
-    top_results = results[:5]
-
-
     # =========================
-    # 5. 没找到相关岗位
+    # 7. 智能降级
     # =========================
 
-    if not top_results:
+    fallback = False
 
-        city_text = (
-            f"{target_city}地区"
-            if target_city
-            else ""
+    fallback_message = None
+
+
+    if (
+        target_city
+        and len(results) == 0
+    ):
+        fallback = True
+
+
+        other_city_df = df[
+            df["city"]
+            .astype(str)
+            .str.strip()
+            != target_city
+        ]
+
+
+        fallback_results = []
+
+
+        for _, row in other_city_df.iterrows():
+            result = score_job(row)
+
+            if result:
+                fallback_results.append(
+                    result
+                )
+
+
+        fallback_results.sort(
+            key=lambda item:
+                item["score"],
+            reverse=True
         )
 
+
+        results = fallback_results
+
+
+        if results:
+            fallback_message = (
+                f"当前岗位知识库中暂未找到"
+                f"{target_city}符合条件的岗位，"
+                f"已自动为你扩展检索其他城市"
+                f"的相近岗位。"
+            )
+
+        else:
+            fallback_message = (
+                f"当前岗位知识库中暂未找到"
+                f"{target_city}符合条件的岗位，"
+                f"扩展其他城市后仍未找到"
+                f"高度相关岗位。"
+            )
+
+
+    # =========================
+    # 8. 完全没有结果
+    # =========================
+
+    if len(results) == 0:
         return {
             "question":
                 question,
 
             "answer":
-                f"当前岗位知识库中暂未检索到"
-                f"{city_text}与该问题高度相关的岗位。",
+                "当前岗位知识库中暂未检索到"
+                "与该问题高度相关的岗位。",
 
             "target_city":
                 target_city,
+
+            "fallback":
+                fallback,
+
+            "fallback_message":
+                fallback_message,
 
             "top_skills":
                 [],
@@ -772,21 +832,26 @@ def ask_question(request: AskRequest):
 
 
     # =========================
-    # 6. 根据检索结果统计技能
+    # 9. Top 5
+    # =========================
+
+    top_results = results[:5]
+
+
+    # =========================
+    # 10. 高频技能统计
     # =========================
 
     skill_counter = Counter()
 
 
     for result in results:
-
         for skill in split_skills(
             result.get(
                 "skills",
                 ""
             )
         ):
-
             skill_counter[
                 skill
             ] += 1
@@ -802,17 +867,6 @@ def ask_question(request: AskRequest):
     ]
 
 
-    # =========================
-    # 7. 自动生成基础答案
-    # =========================
-
-    city_text = (
-        target_city
-        if target_city
-        else "当前数据集"
-    )
-
-
     skill_names = "、".join(
         item["name"]
         for item
@@ -820,27 +874,42 @@ def ask_question(request: AskRequest):
     )
 
 
-    if skill_names:
+    # =========================
+    # 11. 生成回答
+    # =========================
+
+    if fallback:
+        answer = (
+            f"当前知识库暂未找到"
+            f"{target_city}符合条件的岗位。"
+            f"我已扩展检索其他城市，"
+            f"共找到 {len(results)} 条"
+            f"相近岗位。"
+        )
+
+    else:
+        city_text = (
+            target_city
+            if target_city
+            else "当前数据集"
+        )
 
         answer = (
             f"根据当前岗位知识库，"
             f"共检索到 {len(results)} 条"
             f"{city_text}相关岗位。"
+        )
+
+
+    if skill_names:
+        answer += (
             f"这些岗位中较高频的技能包括："
             f"{skill_names}。"
         )
 
-    else:
-
-        answer = (
-            f"根据当前岗位知识库，"
-            f"共检索到 {len(results)} 条"
-            f"{city_text}相关岗位。"
-        )
-
 
     # =========================
-    # 8. 返回问答结果
+    # 12. 返回结果
     # =========================
 
     return {
@@ -852,6 +921,12 @@ def ask_question(request: AskRequest):
 
         "target_city":
             target_city,
+
+        "fallback":
+            fallback,
+
+        "fallback_message":
+            fallback_message,
 
         "top_skills":
             top_skills,
