@@ -14,6 +14,7 @@ import AskPage from './components/AskPage.vue'
 import SkillTestPage from './components/SkillTestPage.vue'
 import JobRecommendPage from './components/JobRecommendPage.vue'
 import TrendPage from './components/TrendPage.vue'
+import HistoryPage from './components/HistoryPage.vue'
 
 
 /* =========================================================
@@ -39,7 +40,7 @@ const overview = reactive({
 
 
 /* =========================================================
-   首页 Dashboard 数据
+   Dashboard 数据
 ========================================================= */
 
 const cities = ref([])
@@ -53,10 +54,9 @@ const trend = reactive({
 
 
 /* =========================================================
-   页面状态
+   状态
 ========================================================= */
 
-const dashboardLoading = ref(true)
 const dashboardError = ref('')
 
 
@@ -175,7 +175,6 @@ const renderTrendChart = async () => {
 ========================================================= */
 
 const loadDashboard = async () => {
-  dashboardLoading.value = true
   dashboardError.value = ''
 
   try {
@@ -192,7 +191,6 @@ const loadDashboard = async () => {
       )
     ])
 
-
     if (!overviewResponse.ok) {
       throw new Error(
         '获取首页概览数据失败'
@@ -205,7 +203,6 @@ const loadDashboard = async () => {
       )
     }
 
-
     const overviewData =
       await overviewResponse.json()
 
@@ -213,7 +210,7 @@ const loadDashboard = async () => {
       await dashboardResponse.json()
 
 
-    /* 顶部三个统计卡片 */
+    /* 顶部统计 */
 
     overview.jobCount =
       Number(
@@ -263,9 +260,6 @@ const loadDashboard = async () => {
 
     overview.hotIndustry =
       '获取失败'
-
-  } finally {
-    dashboardLoading.value = false
   }
 }
 
@@ -312,7 +306,7 @@ const handleResize = () => {
 
 
 /* =========================================================
-   页面切换时重新渲染首页图表
+   切回首页重新渲染图表
 ========================================================= */
 
 watch(
@@ -360,6 +354,7 @@ onBeforeUnmount(() => {
     <aside class="sidebar">
 
       <div class="brand">
+
         <h2>
           CareerLens
         </h2>
@@ -367,12 +362,11 @@ onBeforeUnmount(() => {
         <p>
           职见
         </p>
+
       </div>
 
 
       <nav>
-
-        <!-- 首页 -->
 
         <div
           class="nav-item"
@@ -388,8 +382,6 @@ onBeforeUnmount(() => {
         </div>
 
 
-        <!-- AI 问答 -->
-
         <div
           class="nav-item"
           :class="{
@@ -403,8 +395,6 @@ onBeforeUnmount(() => {
           AI 问答
         </div>
 
-
-        <!-- 技能测评 -->
 
         <div
           class="nav-item"
@@ -420,8 +410,6 @@ onBeforeUnmount(() => {
         </div>
 
 
-        <!-- 岗位推荐 -->
-
         <div
           class="nav-item"
           :class="{
@@ -436,8 +424,6 @@ onBeforeUnmount(() => {
         </div>
 
 
-        <!-- 趋势分析 -->
-
         <div
           class="nav-item"
           :class="{
@@ -451,8 +437,6 @@ onBeforeUnmount(() => {
           趋势分析
         </div>
 
-
-        <!-- 历史记录 -->
 
         <div
           class="nav-item"
@@ -480,7 +464,7 @@ onBeforeUnmount(() => {
 
 
       <!-- =================================================
-           首页 Dashboard
+           首页
       ================================================== -->
 
       <template
@@ -501,8 +485,6 @@ onBeforeUnmount(() => {
 
         </header>
 
-
-        <!-- 加载错误 -->
 
         <div
           v-if="dashboardError"
@@ -561,7 +543,8 @@ onBeforeUnmount(() => {
 
         <section class="grid">
 
-          <!-- 城市岗位 -->
+
+          <!-- 城市岗位分布 -->
 
           <div class="panel">
 
@@ -602,7 +585,8 @@ onBeforeUnmount(() => {
 
                 <span
                   v-if="
-                    city.count !== undefined
+                    city.count !==
+                    undefined
                   "
                   class="city-count"
                 >
@@ -624,7 +608,7 @@ onBeforeUnmount(() => {
           </div>
 
 
-          <!-- 薪资分布 -->
+          <!-- 薪资区间 -->
 
           <div class="panel">
 
@@ -684,7 +668,7 @@ onBeforeUnmount(() => {
           </div>
 
 
-          <!-- 行业趋势 -->
+          <!-- 趋势 -->
 
           <div class="panel">
 
@@ -801,55 +785,13 @@ onBeforeUnmount(() => {
 
       <!-- =================================================
            历史记录
-           下一阶段正式开发
       ================================================== -->
 
-      <section
+      <HistoryPage
         v-else-if="
           activePage === 'history'
         "
-        class="history-page"
-      >
-
-        <header class="sub-page-header">
-
-          <div>
-
-            <h1>
-              历史记录
-            </h1>
-
-            <p>
-              查看近期的 AI 问答、技能测评和岗位推荐记录
-            </p>
-
-          </div>
-
-
-          <span class="page-badge">
-            即将完善
-          </span>
-
-        </header>
-
-
-        <div class="history-placeholder">
-
-          <div class="history-icon">
-            ⏱
-          </div>
-
-          <h2>
-            历史记录模块
-          </h2>
-
-          <p>
-            下一阶段将保存 AI 问答、技能测评和岗位推荐结果。
-          </p>
-
-        </div>
-
-      </section>
+      />
 
     </main>
 
@@ -858,10 +800,6 @@ onBeforeUnmount(() => {
 
 
 <style scoped>
-
-/* =========================================================
-   全局
-========================================================= */
 
 * {
   box-sizing: border-box;
@@ -878,7 +816,7 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   Sidebar
+   左侧导航
 ========================================================= */
 
 .sidebar {
@@ -929,7 +867,7 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   Main
+   主区域
 ========================================================= */
 
 .main {
@@ -966,13 +904,13 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   顶部统计卡
+   顶部统计
 ========================================================= */
 
 .cards {
   display: grid;
   grid-template-columns:
-    repeat(3, 1fr);
+    repeat(3, minmax(0, 1fr));
   gap: 18px;
   margin-bottom: 20px;
 }
@@ -1000,13 +938,16 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   Dashboard Grid
+   Dashboard
 ========================================================= */
 
 .grid {
   display: grid;
   grid-template-columns:
-    repeat(2, minmax(0, 1fr));
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
   gap: 20px;
 }
 
@@ -1074,7 +1015,7 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   薪资柱状图
+   薪资
 ========================================================= */
 
 .salary-chart {
@@ -1122,7 +1063,7 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   首页趋势
+   趋势
 ========================================================= */
 
 .trend-chart {
@@ -1180,79 +1121,6 @@ onBeforeUnmount(() => {
 
 
 /* =========================================================
-   历史记录占位
-========================================================= */
-
-.sub-page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 26px;
-}
-
-
-.sub-page-header h1 {
-  margin: 0 0 8px;
-  font-size: 28px;
-}
-
-
-.sub-page-header p {
-  margin: 0;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-
-.page-badge {
-  padding: 8px 14px;
-  background: #eff6ff;
-  border-radius: 999px;
-  color: #2563eb;
-  font-size: 13px;
-}
-
-
-.history-placeholder {
-  min-height: 440px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 30px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
-  text-align: center;
-}
-
-
-.history-icon {
-  width: 66px;
-  height: 66px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 18px;
-  background: #eff6ff;
-  border-radius: 20px;
-  font-size: 30px;
-}
-
-
-.history-placeholder h2 {
-  margin: 0 0 10px;
-  font-size: 20px;
-}
-
-
-.history-placeholder p {
-  margin: 0;
-  color: #9ca3af;
-}
-
-
-/* =========================================================
    响应式
 ========================================================= */
 
@@ -1283,7 +1151,8 @@ onBeforeUnmount(() => {
     min-height: auto;
     padding: 20px;
     border-right: none;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom:
+      1px solid #e5e7eb;
   }
 
 
@@ -1312,12 +1181,6 @@ onBeforeUnmount(() => {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-
-  .sub-page-header {
-    flex-direction: column;
-    gap: 12px;
   }
 
 }

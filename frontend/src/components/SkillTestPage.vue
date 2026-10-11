@@ -1,6 +1,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 
+import {
+  saveHistoryRecord
+} from '../utils/history'
+
 
 /* =========================
    可选技能
@@ -124,6 +128,237 @@ const clearSkills = () => {
 
 
 /* =========================
+   历史记录数据辅助
+========================= */
+
+const getSkillNames = (
+  value
+) => {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  return value
+    .map(item => {
+      if (
+        typeof item === 'string'
+      ) {
+        return item
+      }
+
+      if (
+        item &&
+        typeof item === 'object'
+      ) {
+        return (
+          item.name ||
+          item.skill ||
+          item.title ||
+          ''
+        )
+      }
+
+      return ''
+    })
+    .filter(Boolean)
+}
+
+
+/* =========================
+   获取推荐岗位
+========================= */
+
+const getRecommendedJobs = (
+  data
+) => {
+  const possibleLists = [
+    data?.recommendations,
+    data?.matches,
+    data?.top_jobs,
+    data?.jobs
+  ]
+
+  const list =
+    possibleLists.find(
+      item =>
+        Array.isArray(item)
+    ) || []
+
+  return list
+}
+
+
+/* =========================
+   获取优势技能
+========================= */
+
+const getStrengthSkills = (
+  data
+) => {
+  const possibleLists = [
+    data?.strengths,
+    data?.strong_skills,
+    data?.matched_skills
+  ]
+
+  const list =
+    possibleLists.find(
+      item =>
+        Array.isArray(item)
+    ) || []
+
+  return getSkillNames(list)
+}
+
+
+/* =========================
+   获取建议补充技能
+========================= */
+
+const getGapSkills = (
+  data
+) => {
+  const possibleLists = [
+    data?.gaps,
+    data?.gap_skills,
+    data?.missing_skills,
+    data?.recommended_skills,
+    data?.suggestions,
+    data?.weaknesses
+  ]
+
+  const list =
+    possibleLists.find(
+      item =>
+        Array.isArray(item)
+    ) || []
+
+  return getSkillNames(list)
+}
+
+
+/* =========================
+   保存技能测评历史
+========================= */
+
+const saveSkillHistory = (
+  data
+) => {
+  try {
+    const strengths =
+      getStrengthSkills(data)
+
+    const gaps =
+      getGapSkills(data)
+
+    const jobs =
+      getRecommendedJobs(data)
+
+    const jobNames =
+      jobs
+        .map(
+          job =>
+            job?.job_title ||
+            job?.title ||
+            ''
+        )
+        .filter(Boolean)
+        .slice(0, 5)
+
+    const score =
+      data?.overall_score ??
+      data?.score ??
+      data?.match_score ??
+      0
+
+    const level =
+      data?.level ||
+      data?.grade ||
+      '暂无评级'
+
+    const city =
+      data?.target_city ||
+      selectedCity.value ||
+      '未指定'
+
+    saveHistoryRecord({
+      type: 'skill',
+
+      title:
+        `${city === '未指定' ? '' : city + ' '}技能测评结果`,
+
+      summary:
+        data?.summary ||
+        `本次综合技能匹配度为 ${score} 分，评级：${level}。`,
+
+      meta: {
+        城市:
+          city,
+
+        综合得分:
+          `${score} 分`,
+
+        评级:
+          level,
+
+        已选技能:
+          `${selectedSkills.value.length} 项`
+      },
+
+      detail: {
+        目标城市:
+          city,
+
+        已选技能:
+          [...selectedSkills.value],
+
+        综合匹配分:
+          `${score} 分`,
+
+        测评等级:
+          level,
+
+        优势技能:
+          strengths,
+
+        建议补充技能:
+          gaps,
+
+        推荐岗位:
+          jobNames,
+
+        推荐岗位数量:
+          jobs.length,
+
+        测评建议:
+          data?.summary ||
+          '暂无更多建议',
+
+        是否扩展检索:
+          data?.fallback
+            ? '是'
+            : '否',
+
+        扩展检索说明:
+          data?.fallback_message ||
+          '无'
+      }
+    })
+
+  } catch (error) {
+    /*
+      历史记录失败不能影响
+      技能测评本身。
+    */
+    console.error(
+      '保存技能测评历史记录失败：',
+      error
+    )
+  }
+}
+
+
+/* =========================
    开始测评
 ========================= */
 
@@ -166,23 +401,43 @@ const startTest = async () => {
     )
 
     if (!response.ok) {
-      const errorData =
-        await response.json()
+      let detail = ''
+
+      try {
+        const errorData =
+          await response.json()
+
+        detail =
+          errorData?.detail || ''
+
+      } catch {
+        // 无法解析错误响应时忽略
+      }
 
       throw new Error(
-        errorData.detail ||
+        detail ||
         '技能测评请求失败'
       )
     }
 
-    result.value =
+    const data =
       await response.json()
+
+    /*
+      先正常显示测评结果
+    */
+    result.value = data
+
+    /*
+      测评成功后自动保存历史记录
+    */
+    saveSkillHistory(data)
 
   } catch (error) {
     console.error(error)
 
     errorMessage.value =
-      error.message ||
+      error?.message ||
       '技能测评服务暂时不可用，请确认后端服务是否已经启动。'
 
   } finally {
@@ -208,8 +463,18 @@ const formatSalary = (
     return '薪资面议'
   }
 
-  const minNumber = Number(min)
-  const maxNumber = Number(max)
+  const minNumber =
+    Number(min)
+
+  const maxNumber =
+    Number(max)
+
+  if (
+    Number.isNaN(minNumber) ||
+    Number.isNaN(maxNumber)
+  ) {
+    return '薪资面议'
+  }
 
   const minK =
     minNumber >= 1000

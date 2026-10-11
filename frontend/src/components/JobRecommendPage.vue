@@ -1,6 +1,15 @@
 <script setup>
 import { ref } from 'vue'
 
+import {
+  saveHistoryRecord
+} from '../utils/history'
+
+
+/* =========================
+   页面状态
+========================= */
+
 const city = ref('')
 const keyword = ref('')
 const education = ref('')
@@ -13,6 +22,11 @@ const loading = ref(false)
 const errorMessage = ref('')
 const result = ref(null)
 
+
+/* =========================
+   城市
+========================= */
+
 const cities = [
   '深圳',
   '广州',
@@ -21,6 +35,11 @@ const cities = [
   '杭州',
   '合肥'
 ]
+
+
+/* =========================
+   岗位方向
+========================= */
 
 const jobDirections = [
   'Java',
@@ -32,6 +51,11 @@ const jobDirections = [
   '测试',
   '运维'
 ]
+
+
+/* =========================
+   可选技能
+========================= */
 
 const skillOptions = [
   'Java',
@@ -56,8 +80,15 @@ const skillOptions = [
   '机器学习'
 ]
 
+
+/* =========================
+   选择 / 取消技能
+========================= */
+
 const toggleSkill = (skill) => {
-  if (selectedSkills.value.includes(skill)) {
+  if (
+    selectedSkills.value.includes(skill)
+  ) {
     selectedSkills.value =
       selectedSkills.value.filter(
         item => item !== skill
@@ -67,8 +98,14 @@ const toggleSkill = (skill) => {
   }
 }
 
+
+/* =========================
+   自定义技能
+========================= */
+
 const addCustomSkill = () => {
-  const value = customSkill.value.trim()
+  const value =
+    customSkill.value.trim()
 
   if (!value) {
     return
@@ -88,19 +125,270 @@ const addCustomSkill = () => {
   customSkill.value = ''
 }
 
+
+/* =========================
+   重置
+========================= */
+
 const clearForm = () => {
   city.value = ''
   keyword.value = ''
   education.value = ''
   minSalary.value = null
+
   selectedSkills.value = []
+
   result.value = null
   errorMessage.value = ''
 }
 
+
+/* =========================
+   获取推荐岗位列表
+========================= */
+
+const getRecommendations = (
+  data
+) => {
+  if (
+    Array.isArray(
+      data?.recommendations
+    )
+  ) {
+    return data.recommendations
+  }
+
+  if (
+    Array.isArray(
+      data?.matches
+    )
+  ) {
+    return data.matches
+  }
+
+  return []
+}
+
+
+/* =========================
+   格式化岗位标题
+========================= */
+
+const getJobName = (
+  job
+) => {
+  return (
+    job?.job_title ||
+    job?.title ||
+    '未命名岗位'
+  )
+}
+
+
+/* =========================
+   格式化公司
+========================= */
+
+const getCompanyName = (
+  job
+) => {
+  return (
+    job?.company_name ||
+    job?.company ||
+    '未知公司'
+  )
+}
+
+
+/* =========================
+   格式化岗位摘要
+========================= */
+
+const getJobSummary = (
+  job
+) => {
+  const title =
+    getJobName(job)
+
+  const company =
+    getCompanyName(job)
+
+  const targetCity =
+    job?.city ||
+    '城市不限'
+
+  const salary =
+    formatSalary(
+      job?.salary_min,
+      job?.salary_max
+    )
+
+  const score =
+    job?.match_score ??
+    job?.score ??
+    null
+
+  return (
+    `${title}｜${company}｜${targetCity}｜${salary}` +
+    (
+      score !== null
+        ? `｜${score}% 匹配`
+        : ''
+    )
+  )
+}
+
+
+/* =========================
+   保存岗位推荐历史
+========================= */
+
+const saveRecommendHistory = (
+  data
+) => {
+  try {
+    const jobs =
+      getRecommendations(data)
+
+    const topJobs =
+      jobs
+        .slice(0, 5)
+        .map(
+          job =>
+            getJobSummary(job)
+        )
+
+    const targetCity =
+      data?.conditions?.city ||
+      city.value ||
+      '不限城市'
+
+    const targetKeyword =
+      data?.conditions?.keyword ||
+      keyword.value ||
+      '不限方向'
+
+    const targetEducation =
+      data?.conditions?.education ||
+      education.value ||
+      '不限学历'
+
+    const targetSalary =
+      data?.conditions?.min_salary ??
+      (
+        minSalary.value === null ||
+        minSalary.value === ''
+          ? null
+          : Number(minSalary.value)
+      )
+
+    const userSkills =
+      Array.isArray(
+        data?.conditions?.skills
+      )
+        ? data.conditions.skills
+        : [...selectedSkills.value]
+
+    const total =
+      Number(
+        data?.total ??
+        jobs.length
+      )
+
+    saveHistoryRecord({
+      type: 'recommend',
+
+      title:
+        `${
+          targetCity === '不限城市'
+            ? ''
+            : targetCity + ' '
+        }${
+          targetKeyword === '不限方向'
+            ? '岗位推荐'
+            : targetKeyword + ' 岗位推荐'
+        }`,
+
+      summary:
+        data?.message ||
+        (
+          total > 0
+            ? `根据当前求职条件，共匹配到 ${total} 条岗位。`
+            : '当前条件下暂未匹配到合适岗位。'
+        ),
+
+      meta: {
+        城市:
+          targetCity,
+
+        岗位方向:
+          targetKeyword,
+
+        匹配岗位:
+          `${total} 条`,
+
+        已选技能:
+          `${userSkills.length} 项`
+      },
+
+      detail: {
+        目标城市:
+          targetCity,
+
+        岗位方向:
+          targetKeyword,
+
+        已选技能:
+          userSkills,
+
+        最低期望薪资:
+          targetSalary !== null &&
+          targetSalary !== undefined
+            ? `${targetSalary}K`
+            : '不限',
+
+        学历要求:
+          targetEducation,
+
+        匹配岗位数量:
+          total,
+
+        推荐岗位:
+          topJobs,
+
+        是否扩展检索:
+          data?.fallback
+            ? '是'
+            : '否',
+
+        扩展检索说明:
+          data?.fallback_message ||
+          '无'
+      }
+    })
+
+  } catch (error) {
+    /*
+      历史记录保存失败，
+      不影响岗位推荐主功能。
+    */
+    console.error(
+      '保存岗位推荐历史记录失败：',
+      error
+    )
+  }
+}
+
+
+/* =========================
+   岗位推荐
+========================= */
+
 const recommendJobs = async () => {
   loading.value = true
+
   errorMessage.value = ''
+
   result.value = null
 
   try {
@@ -110,7 +398,8 @@ const recommendJobs = async () => {
         method: 'POST',
 
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type':
+            'application/json'
         },
 
         body: JSON.stringify({
@@ -127,7 +416,9 @@ const recommendJobs = async () => {
             minSalary.value === null ||
             minSalary.value === ''
               ? null
-              : Number(minSalary.value),
+              : Number(
+                  minSalary.value
+                ),
 
           education:
             education.value || null
@@ -136,23 +427,43 @@ const recommendJobs = async () => {
     )
 
     if (!response.ok) {
-      const data =
-        await response.json()
+      let detail = ''
+
+      try {
+        const errorData =
+          await response.json()
+
+        detail =
+          errorData?.detail || ''
+
+      } catch {
+        // 无法解析错误响应时忽略
+      }
 
       throw new Error(
-        data.detail ||
+        detail ||
         '岗位推荐请求失败'
       )
     }
 
-    result.value =
+    const data =
       await response.json()
+
+    /*
+      先正常显示推荐结果
+    */
+    result.value = data
+
+    /*
+      推荐成功后自动保存历史记录
+    */
+    saveRecommendHistory(data)
 
   } catch (error) {
     console.error(error)
 
     errorMessage.value =
-      error.message ||
+      error?.message ||
       '岗位推荐服务暂时不可用，请确认后端已经启动。'
 
   } finally {
@@ -160,7 +471,15 @@ const recommendJobs = async () => {
   }
 }
 
-const formatSalary = (min, max) => {
+
+/* =========================
+   薪资格式化
+========================= */
+
+const formatSalary = (
+  min,
+  max
+) => {
   if (
     min === null ||
     max === null ||
@@ -170,7 +489,30 @@ const formatSalary = (min, max) => {
     return '薪资面议'
   }
 
-  return `${min}-${max}K`
+  const minNumber =
+    Number(min)
+
+  const maxNumber =
+    Number(max)
+
+  if (
+    Number.isNaN(minNumber) ||
+    Number.isNaN(maxNumber)
+  ) {
+    return '薪资面议'
+  }
+
+  const minK =
+    minNumber >= 1000
+      ? minNumber / 1000
+      : minNumber
+
+  const maxK =
+    maxNumber >= 1000
+      ? maxNumber / 1000
+      : maxNumber
+
+  return `${minK}-${maxK}K`
 }
 </script>
 

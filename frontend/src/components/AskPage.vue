@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { saveHistoryRecord } from '../utils/history'
 
 
 /* =========================
@@ -45,6 +46,107 @@ const parseSkills = (value) => {
 
 
 /* =========================
+   历史记录辅助
+========================= */
+
+const getTopSkillNames = (data) => {
+  if (
+    !data?.top_skills ||
+    !Array.isArray(data.top_skills)
+  ) {
+    return []
+  }
+
+  return data.top_skills
+    .map(item => item?.name)
+    .filter(Boolean)
+}
+
+
+const saveAskHistory = (
+  text,
+  data
+) => {
+  try {
+    const skillNames =
+      getTopSkillNames(data)
+
+    const matchCount =
+      Array.isArray(data?.matches)
+        ? data.matches.length
+        : 0
+
+    saveHistoryRecord({
+      type: 'ask',
+
+      title:
+        text.length > 36
+          ? `${text.slice(0, 36)}...`
+          : text,
+
+      summary:
+        data?.answer ||
+        '已完成岗位知识库检索。',
+
+      meta: {
+        城市:
+          data?.target_city ||
+          '未指定',
+
+        匹配岗位:
+          `${matchCount} 条`,
+
+        高频技能:
+          skillNames.length
+            ? skillNames
+                .slice(0, 5)
+                .join('、')
+            : '暂无'
+      },
+
+      detail: {
+        问题:
+          text,
+
+        回答:
+          data?.answer ||
+          '暂无回答',
+
+        识别城市:
+          data?.target_city ||
+          '未识别',
+
+        高频技能:
+          skillNames,
+
+        匹配岗位数量:
+          matchCount,
+
+        是否扩展检索:
+          data?.fallback
+            ? '是'
+            : '否',
+
+        扩展检索说明:
+          data?.fallback_message ||
+          '无'
+      }
+    })
+
+  } catch (error) {
+    /*
+      历史记录保存失败不应该影响
+      AI 问答本身正常使用。
+    */
+    console.error(
+      '保存 AI 问答历史记录失败：',
+      error
+    )
+  }
+}
+
+
+/* =========================
    提问
 ========================= */
 
@@ -58,13 +160,11 @@ const askQuestion = async () => {
     return
   }
 
-
   loading.value = true
 
   errorMessage.value = ''
 
   result.value = null
-
 
   try {
     const response = await fetch(
@@ -83,21 +183,48 @@ const askQuestion = async () => {
       }
     )
 
-
     if (!response.ok) {
+      let detail = ''
+
+      try {
+        const errorData =
+          await response.json()
+
+        detail =
+          errorData?.detail || ''
+
+      } catch {
+        // 无法解析错误响应时忽略
+      }
+
       throw new Error(
+        detail ||
         'AI 问答请求失败'
       )
     }
 
-
-    result.value =
+    const data =
       await response.json()
+
+    /*
+      先正常展示问答结果
+    */
+    result.value = data
+
+    /*
+      问答成功之后，
+      自动写入历史记录
+    */
+    saveAskHistory(
+      text,
+      data
+    )
 
   } catch (error) {
     console.error(error)
 
     errorMessage.value =
+      error?.message ||
       'AI 问答服务暂时不可用，请确认后端服务是否已经启动。'
 
   } finally {
@@ -123,11 +250,11 @@ const formatSalary = (
     return '薪资面议'
   }
 
+  const minNumber =
+    Number(min)
 
-  const minNumber = Number(min)
-
-  const maxNumber = Number(max)
-
+  const maxNumber =
+    Number(max)
 
   if (
     Number.isNaN(minNumber) ||
@@ -136,18 +263,15 @@ const formatSalary = (
     return '薪资面议'
   }
 
-
   const minK =
     minNumber >= 1000
       ? minNumber / 1000
       : minNumber
 
-
   const maxK =
     maxNumber >= 1000
       ? maxNumber / 1000
       : maxNumber
-
 
   return `${minK}-${maxK}K`
 }
