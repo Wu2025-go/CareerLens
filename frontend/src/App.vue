@@ -10,7 +10,7 @@ import {
 import * as echarts from 'echarts'
 import AskPage from './components/AskPage.vue'
 import SkillTestPage from './components/SkillTestPage.vue'
-
+import JobRecommendPage from './components/JobRecommendPage.vue'
 /* =========================
    页面切换
 ========================= */
@@ -369,9 +369,18 @@ onBeforeUnmount(() => {
 </div>
 
 
-        <div class="nav-item">
-          岗位推荐
-        </div>
+        <div
+  class="nav-item"
+  :class="{
+    active:
+      activePage === 'recommend'
+  }"
+  @click="
+    activePage = 'recommend'
+  "
+>
+  岗位推荐
+</div>
 
 
         <div class="nav-item">
@@ -612,6 +621,9 @@ onBeforeUnmount(() => {
   v-if="
     activePage === 'skills'
   "
+/>
+<JobRecommendPage
+  v-if="activePage === 'recommend'"
 />
 
     </main>
