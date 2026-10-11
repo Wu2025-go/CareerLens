@@ -9,7 +9,7 @@ import {
 
 import * as echarts from 'echarts'
 import AskPage from './components/AskPage.vue'
-
+import SkillTestPage from './components/SkillTestPage.vue'
 
 /* =========================
    页面切换
@@ -355,9 +355,18 @@ onBeforeUnmount(() => {
         </div>
 
 
-        <div class="nav-item">
-          技能测评
-        </div>
+        <div
+  class="nav-item"
+  :class="{
+    active:
+      activePage === 'skills'
+  }"
+  @click="
+    activePage = 'skills'
+  "
+>
+  技能测评
+</div>
 
 
         <div class="nav-item">
@@ -599,6 +608,11 @@ onBeforeUnmount(() => {
           activePage === 'ask'
         "
       />
+      <SkillTestPage
+  v-if="
+    activePage === 'skills'
+  "
+/>
 
     </main>
 
