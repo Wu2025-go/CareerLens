@@ -1,26 +1,35 @@
 <script setup>
 import {
-  onMounted,
+  nextTick,
   onBeforeUnmount,
-  ref,
+  onMounted,
   reactive,
-  computed
+  ref,
+  watch
 } from 'vue'
 
 import * as echarts from 'echarts'
+
 import AskPage from './components/AskPage.vue'
 import SkillTestPage from './components/SkillTestPage.vue'
 import JobRecommendPage from './components/JobRecommendPage.vue'
-/* =========================
+import TrendPage from './components/TrendPage.vue'
+
+
+/* =========================================================
    页面切换
-========================= */
+========================================================= */
 
 const activePage = ref('dashboard')
 
+const setPage = (page) => {
+  activePage.value = page
+}
 
-/* =========================
-   顶部总览数据
-========================= */
+
+/* =========================================================
+   首页顶部数据
+========================================================= */
 
 const overview = reactive({
   jobCount: '--',
@@ -29,14 +38,12 @@ const overview = reactive({
 })
 
 
-/* =========================
-   Dashboard 数据
-========================= */
+/* =========================================================
+   首页 Dashboard 数据
+========================================================= */
 
 const cities = ref([])
-
 const salaryDistribution = ref([])
-
 const skills = ref([])
 
 const trend = reactive({
@@ -45,71 +52,62 @@ const trend = reactive({
 })
 
 
-/* =========================
-   薪资柱状图高度计算
-========================= */
+/* =========================================================
+   页面状态
+========================================================= */
 
-const maxSalaryValue = computed(() => {
-  if (salaryDistribution.value.length === 0) {
-    return 1
-  }
-
-  return Math.max(
-    ...salaryDistribution.value.map(
-      item => item.value
-    )
-  )
-})
+const dashboardLoading = ref(true)
+const dashboardError = ref('')
 
 
-const getSalaryHeight = (value) => {
-  return `${
-    (value / maxSalaryValue.value) * 150
-  }px`
-}
+/* =========================================================
+   首页趋势图
+========================================================= */
+
+const trendChartRef = ref(null)
+
+let trendChartInstance = null
 
 
-/* =========================
-   ECharts 趋势图
-========================= */
+const renderTrendChart = async () => {
+  await nextTick()
 
-const trendChart = ref(null)
-
-let chartInstance = null
-
-
-const handleResize = () => {
-  chartInstance?.resize()
-}
-
-
-const renderTrendChart = () => {
-  if (!trendChart.value) {
+  if (
+    activePage.value !== 'dashboard' ||
+    !trendChartRef.value ||
+    trend.values.length === 0
+  ) {
     return
   }
 
-  if (!chartInstance) {
-    chartInstance =
-      echarts.init(trendChart.value)
+  if (trendChartInstance) {
+    trendChartInstance.dispose()
+    trendChartInstance = null
   }
 
-  chartInstance.setOption({
+  trendChartInstance =
+    echarts.init(
+      trendChartRef.value
+    )
+
+  trendChartInstance.setOption({
     tooltip: {
       trigger: 'axis'
     },
 
     grid: {
-      left: '8%',
+      left: '5%',
       right: '5%',
-      top: '12%',
-      bottom: '15%',
+      top: 35,
+      bottom: 35,
       containLabel: true
     },
 
     xAxis: {
       type: 'category',
 
-      data: trend.months,
+      data:
+        trend.months,
 
       boundaryGap: false,
 
@@ -133,14 +131,6 @@ const renderTrendChart = () => {
         color: '#6b7280'
       },
 
-      axisLine: {
-        show: false
-      },
-
-      axisTick: {
-        show: false
-      },
-
       splitLine: {
         lineStyle: {
           color: '#eef2f7'
@@ -150,17 +140,16 @@ const renderTrendChart = () => {
 
     series: [
       {
-        name: '岗位热度',
+        name: '岗位数量',
 
         type: 'line',
 
         smooth: true,
 
-        data: trend.values,
+        symbolSize: 7,
 
-        symbol: 'circle',
-
-        symbolSize: 8,
+        data:
+          trend.values,
 
         lineStyle: {
           width: 3,
@@ -168,14 +157,12 @@ const renderTrendChart = () => {
         },
 
         itemStyle: {
-          color: '#3b82f6',
-          borderColor: '#ffffff',
-          borderWidth: 2
+          color: '#3b82f6'
         },
 
         areaStyle: {
           color: '#bfdbfe',
-          opacity: 0.28
+          opacity: 0.3
         }
       }
     ]
@@ -183,11 +170,14 @@ const renderTrendChart = () => {
 }
 
 
-/* =========================
-   页面加载
-========================= */
+/* =========================================================
+   获取首页数据
+========================================================= */
 
-onMounted(async () => {
+const loadDashboard = async () => {
+  dashboardLoading.value = true
+  dashboardError.value = ''
+
   try {
     const [
       overviewResponse,
@@ -205,79 +195,142 @@ onMounted(async () => {
 
     if (!overviewResponse.ok) {
       throw new Error(
-        '获取 overview 数据失败'
+        '获取首页概览数据失败'
       )
     }
-
 
     if (!dashboardResponse.ok) {
       throw new Error(
-        '获取 dashboard 数据失败'
+        '获取首页分析数据失败'
       )
     }
 
 
-    /* 顶部数据 */
-
     const overviewData =
       await overviewResponse.json()
-
-
-    overview.jobCount =
-      overviewData.job_count.toLocaleString()
-
-
-    overview.avgSalary =
-      `${overviewData.avg_salary}k`
-
-
-    overview.hotIndustry =
-      overviewData.hot_industry
-
-
-    /* Dashboard 数据 */
 
     const dashboardData =
       await dashboardResponse.json()
 
 
+    /* 顶部三个统计卡片 */
+
+    overview.jobCount =
+      Number(
+        overviewData.job_count || 0
+      ).toLocaleString()
+
+    overview.avgSalary =
+      overviewData.avg_salary ?? 0
+
+    overview.hotIndustry =
+      overviewData.hot_industry ||
+      '暂无数据'
+
+
+    /* Dashboard */
+
     cities.value =
       dashboardData.cities || []
-
 
     salaryDistribution.value =
       dashboardData.salary_distribution || []
 
-
     skills.value =
       dashboardData.skills || []
 
-
     trend.months =
       dashboardData.trend?.months || []
-
 
     trend.values =
       dashboardData.trend?.values || []
 
 
-    /* 渲染趋势图 */
-
-    renderTrendChart()
+    await renderTrendChart()
 
   } catch (error) {
-    console.error(
-      '首页数据加载失败：',
-      error
-    )
+    console.error(error)
 
-    overview.jobCount = '获取失败'
+    dashboardError.value =
+      error.message ||
+      '首页数据加载失败'
 
-    overview.avgSalary = '--'
+    overview.jobCount =
+      '获取失败'
 
-    overview.hotIndustry = '获取失败'
+    overview.avgSalary =
+      '--'
+
+    overview.hotIndustry =
+      '获取失败'
+
+  } finally {
+    dashboardLoading.value = false
+  }
+}
+
+
+/* =========================================================
+   薪资柱状图高度
+========================================================= */
+
+const getSalaryBarHeight = (value) => {
+  const maxValue = Math.max(
+    ...salaryDistribution.value.map(
+      item =>
+        Number(item.value) || 0
+    ),
+    1
+  )
+
+  const number =
+    Number(value) || 0
+
+  if (number === 0) {
+    return '2px'
   }
 
+  const percentage =
+    number / maxValue
+
+  return `${
+    Math.max(
+      percentage * 160,
+      8
+    )
+  }px`
+}
+
+
+/* =========================================================
+   Resize
+========================================================= */
+
+const handleResize = () => {
+  trendChartInstance?.resize()
+}
+
+
+/* =========================================================
+   页面切换时重新渲染首页图表
+========================================================= */
+
+watch(
+  activePage,
+  async (page) => {
+    if (page === 'dashboard') {
+      await renderTrendChart()
+    }
+  }
+)
+
+
+/* =========================================================
+   生命周期
+========================================================= */
+
+onMounted(() => {
+  loadDashboard()
 
   window.addEventListener(
     'resize',
@@ -286,21 +339,13 @@ onMounted(async () => {
 })
 
 
-/* =========================
-   页面卸载
-========================= */
-
 onBeforeUnmount(() => {
   window.removeEventListener(
     'resize',
     handleResize
   )
 
-  if (chartInstance) {
-    chartInstance.dispose()
-
-    chartInstance = null
-  }
+  trendChartInstance?.dispose()
 })
 </script>
 
@@ -308,9 +353,9 @@ onBeforeUnmount(() => {
 <template>
   <div class="app">
 
-    <!-- =====================
-         左侧导航
-    ====================== -->
+    <!-- ===================================================
+         左侧导航栏
+    ==================================================== -->
 
     <aside class="sidebar">
 
@@ -327,6 +372,8 @@ onBeforeUnmount(() => {
 
       <nav>
 
+        <!-- 首页 -->
+
         <div
           class="nav-item"
           :class="{
@@ -334,12 +381,14 @@ onBeforeUnmount(() => {
               activePage === 'dashboard'
           }"
           @click="
-            activePage = 'dashboard'
+            setPage('dashboard')
           "
         >
           首页 · 总览
         </div>
 
+
+        <!-- AI 问答 -->
 
         <div
           class="nav-item"
@@ -348,47 +397,73 @@ onBeforeUnmount(() => {
               activePage === 'ask'
           }"
           @click="
-            activePage = 'ask'
+            setPage('ask')
           "
         >
           AI 问答
         </div>
 
 
-        <div
-  class="nav-item"
-  :class="{
-    active:
-      activePage === 'skills'
-  }"
-  @click="
-    activePage = 'skills'
-  "
->
-  技能测评
-</div>
-
+        <!-- 技能测评 -->
 
         <div
-  class="nav-item"
-  :class="{
-    active:
-      activePage === 'recommend'
-  }"
-  @click="
-    activePage = 'recommend'
-  "
->
-  岗位推荐
-</div>
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'skills'
+          }"
+          @click="
+            setPage('skills')
+          "
+        >
+          技能测评
+        </div>
 
 
-        <div class="nav-item">
+        <!-- 岗位推荐 -->
+
+        <div
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'recommend'
+          }"
+          @click="
+            setPage('recommend')
+          "
+        >
+          岗位推荐
+        </div>
+
+
+        <!-- 趋势分析 -->
+
+        <div
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'trends'
+          }"
+          @click="
+            setPage('trends')
+          "
+        >
           趋势分析
         </div>
 
 
-        <div class="nav-item">
+        <!-- 历史记录 -->
+
+        <div
+          class="nav-item"
+          :class="{
+            active:
+              activePage === 'history'
+          }"
+          @click="
+            setPage('history')
+          "
+        >
           历史记录
         </div>
 
@@ -397,24 +472,22 @@ onBeforeUnmount(() => {
     </aside>
 
 
-    <!-- =====================
-         主内容
-    ====================== -->
+    <!-- ===================================================
+         主内容区域
+    ==================================================== -->
 
     <main class="main">
 
-      <!-- =====================
-           首页 Dashboard
-      ====================== -->
 
-      <div
-        v-show="
+      <!-- =================================================
+           首页 Dashboard
+      ================================================== -->
+
+      <template
+        v-if="
           activePage === 'dashboard'
         "
-        class="dashboard-page"
       >
-
-        <!-- 页面标题 -->
 
         <header class="page-header">
 
@@ -422,12 +495,21 @@ onBeforeUnmount(() => {
             就业市场总览
           </h1>
 
-
           <span>
             CareerLens · 就业数据分析平台
           </span>
 
         </header>
+
+
+        <!-- 加载错误 -->
+
+        <div
+          v-if="dashboardError"
+          class="error-box"
+        >
+          {{ dashboardError }}
+        </div>
 
 
         <!-- 顶部统计 -->
@@ -454,7 +536,7 @@ onBeforeUnmount(() => {
             </p>
 
             <strong>
-              ¥{{ overview.avgSalary }}
+              ¥{{ overview.avgSalary }}k
             </strong>
 
           </div>
@@ -475,11 +557,11 @@ onBeforeUnmount(() => {
         </section>
 
 
-        <!-- 四个分析模块 -->
+        <!-- Dashboard -->
 
         <section class="grid">
 
-          <!-- 城市岗位分布 -->
+          <!-- 城市岗位 -->
 
           <div class="panel">
 
@@ -488,36 +570,61 @@ onBeforeUnmount(() => {
             </h3>
 
 
-            <div
-              v-for="city in cities"
-              :key="city.name"
-              class="city-row"
+            <template
+              v-if="
+                cities.length
+              "
             >
 
-              <span class="city-name">
-                {{ city.name }}
-              </span>
+              <div
+                v-for="city in cities"
+                :key="city.name"
+                class="city-row"
+              >
+
+                <span class="city-name">
+                  {{ city.name }}
+                </span>
 
 
-              <div class="bar-bg">
+                <div class="bar-bg">
 
-                <div
-                  class="bar"
-                  :style="{
-                    width:
-                      city.value + '%'
-                  }"
-                >
+                  <div
+                    class="bar"
+                    :style="{
+                      width:
+                        city.value + '%'
+                    }"
+                  ></div>
+
                 </div>
+
+
+                <span
+                  v-if="
+                    city.count !== undefined
+                  "
+                  class="city-count"
+                >
+                  {{ city.count }}
+                </span>
 
               </div>
 
+            </template>
+
+
+            <div
+              v-else
+              class="empty-state"
+            >
+              暂无城市岗位数据
             </div>
 
           </div>
 
 
-          <!-- 薪资区间 -->
+          <!-- 薪资分布 -->
 
           <div class="panel">
 
@@ -526,7 +633,12 @@ onBeforeUnmount(() => {
             </h3>
 
 
-            <div class="salary-chart">
+            <div
+              v-if="
+                salaryDistribution.length
+              "
+              class="salary-chart"
+            >
 
               <div
                 v-for="
@@ -537,16 +649,20 @@ onBeforeUnmount(() => {
                 class="salary-item"
               >
 
+                <div class="salary-value">
+                  {{ item.value }}
+                </div>
+
+
                 <div
                   class="salary-bar"
                   :style="{
                     height:
-                      getSalaryHeight(
+                      getSalaryBarHeight(
                         item.value
                       )
                   }"
-                >
-                </div>
+                ></div>
 
 
                 <span>
@@ -557,10 +673,18 @@ onBeforeUnmount(() => {
 
             </div>
 
+
+            <div
+              v-else
+              class="empty-state"
+            >
+              暂无薪资统计数据
+            </div>
+
           </div>
 
 
-          <!-- 行业热度趋势 -->
+          <!-- 行业趋势 -->
 
           <div class="panel">
 
@@ -570,9 +694,19 @@ onBeforeUnmount(() => {
 
 
             <div
-              ref="trendChart"
+              v-if="
+                trend.values.length
+              "
+              ref="trendChartRef"
               class="trend-chart"
+            ></div>
+
+
+            <div
+              v-else
+              class="empty-state trend-empty"
             >
+              暂无岗位趋势数据
             </div>
 
           </div>
@@ -587,7 +721,12 @@ onBeforeUnmount(() => {
             </h3>
 
 
-            <div class="skill-list">
+            <div
+              v-if="
+                skills.length
+              "
+              class="skill-list"
+            >
 
               <span
                 v-for="
@@ -601,30 +740,116 @@ onBeforeUnmount(() => {
 
             </div>
 
+
+            <div
+              v-else
+              class="empty-state"
+            >
+              暂无技能数据
+            </div>
+
           </div>
 
         </section>
 
-      </div>
+      </template>
 
 
-      <!-- =====================
-           AI 问答页面
-      ====================== -->
+      <!-- =================================================
+           AI 问答
+      ================================================== -->
 
       <AskPage
-        v-if="
+        v-else-if="
           activePage === 'ask'
         "
       />
+
+
+      <!-- =================================================
+           技能测评
+      ================================================== -->
+
       <SkillTestPage
-  v-if="
-    activePage === 'skills'
-  "
-/>
-<JobRecommendPage
-  v-if="activePage === 'recommend'"
-/>
+        v-else-if="
+          activePage === 'skills'
+        "
+      />
+
+
+      <!-- =================================================
+           岗位推荐
+      ================================================== -->
+
+      <JobRecommendPage
+        v-else-if="
+          activePage === 'recommend'
+        "
+      />
+
+
+      <!-- =================================================
+           趋势分析
+      ================================================== -->
+
+      <TrendPage
+        v-else-if="
+          activePage === 'trends'
+        "
+      />
+
+
+      <!-- =================================================
+           历史记录
+           下一阶段正式开发
+      ================================================== -->
+
+      <section
+        v-else-if="
+          activePage === 'history'
+        "
+        class="history-page"
+      >
+
+        <header class="sub-page-header">
+
+          <div>
+
+            <h1>
+              历史记录
+            </h1>
+
+            <p>
+              查看近期的 AI 问答、技能测评和岗位推荐记录
+            </p>
+
+          </div>
+
+
+          <span class="page-badge">
+            即将完善
+          </span>
+
+        </header>
+
+
+        <div class="history-placeholder">
+
+          <div class="history-icon">
+            ⏱
+          </div>
+
+          <h2>
+            历史记录模块
+          </h2>
+
+          <p>
+            下一阶段将保存 AI 问答、技能测评和岗位推荐结果。
+          </p>
+
+        </div>
+
+      </section>
 
     </main>
 
@@ -634,48 +859,49 @@ onBeforeUnmount(() => {
 
 <style scoped>
 
+/* =========================================================
+   全局
+========================================================= */
+
 * {
   box-sizing: border-box;
 }
 
 
-/* =========================
-   整体
-========================= */
-
 .app {
   display: flex;
+  width: 100%;
   min-height: 100vh;
   background: #f6f8fb;
-  color: #1f2937;
+  color: #111827;
 }
 
 
-/* =========================
-   左侧导航
-========================= */
+/* =========================================================
+   Sidebar
+========================================================= */
 
 .sidebar {
   width: 220px;
+  min-width: 220px;
   min-height: 100vh;
   padding: 30px 22px;
   background: #ffffff;
   border-right: 1px solid #e5e7eb;
-  flex-shrink: 0;
 }
 
 
 .brand h2 {
   margin: 0;
-  font-size: 22px;
   color: #111827;
+  font-size: 22px;
 }
 
 
 .brand p {
   margin: 6px 0 30px;
-  font-size: 18px;
   color: #2563eb;
+  font-size: 18px;
 }
 
 
@@ -686,13 +912,12 @@ onBeforeUnmount(() => {
   color: #6b7280;
   cursor: pointer;
   transition: all 0.2s ease;
-  user-select: none;
 }
 
 
 .nav-item:hover {
   background: #f3f4f6;
-  color: #2563eb;
+  color: #374151;
 }
 
 
@@ -703,9 +928,9 @@ onBeforeUnmount(() => {
 }
 
 
-/* =========================
-   主内容
-========================= */
+/* =========================================================
+   Main
+========================================================= */
 
 .main {
   flex: 1;
@@ -714,27 +939,23 @@ onBeforeUnmount(() => {
 }
 
 
-.dashboard-page {
-  width: 100%;
-}
-
-
-/* =========================
-   页面标题
-========================= */
+/* =========================================================
+   首页标题
+========================================================= */
 
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 20px;
   margin-bottom: 28px;
 }
 
 
 .page-header h1 {
   margin: 0;
-  font-size: 28px;
   color: #111827;
+  font-size: 28px;
 }
 
 
@@ -744,9 +965,9 @@ onBeforeUnmount(() => {
 }
 
 
-/* =========================
-   顶部卡片
-========================= */
+/* =========================================================
+   顶部统计卡
+========================================================= */
 
 .cards {
   display: grid;
@@ -768,30 +989,30 @@ onBeforeUnmount(() => {
 .card p {
   margin: 0 0 12px;
   color: #6b7280;
-  font-size: 16px;
 }
 
 
 .card strong {
+  color: #111827;
   font-size: 30px;
   font-weight: 600;
-  color: #111827;
 }
 
 
-/* =========================
-   四宫格
-========================= */
+/* =========================================================
+   Dashboard Grid
+========================================================= */
 
 .grid {
   display: grid;
   grid-template-columns:
-    repeat(2, 1fr);
+    repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
 
 .panel {
+  min-width: 0;
   min-height: 280px;
   padding: 22px;
   background: #ffffff;
@@ -802,26 +1023,36 @@ onBeforeUnmount(() => {
 
 .panel h3 {
   margin: 0 0 24px;
-  font-size: 19px;
   color: #111827;
+  font-size: 19px;
 }
 
 
-/* =========================
+/* =========================================================
    城市岗位
-========================= */
+========================================================= */
 
 .city-row {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 22px 0;
+  gap: 12px;
+  margin: 19px 0;
 }
 
 
 .city-name {
-  width: 44px;
+  width: 48px;
   flex-shrink: 0;
+  color: #374151;
+}
+
+
+.city-count {
+  width: 30px;
+  flex-shrink: 0;
+  color: #9ca3af;
+  font-size: 12px;
+  text-align: right;
 }
 
 
@@ -838,57 +1069,76 @@ onBeforeUnmount(() => {
   height: 100%;
   background: #3b82f6;
   border-radius: 999px;
-  transition: width 0.3s ease;
+  transition: width 0.4s ease;
 }
 
 
-/* =========================
-   薪资分布
-========================= */
+/* =========================================================
+   薪资柱状图
+========================================================= */
 
 .salary-chart {
-  height: 190px;
+  height: 205px;
   display: flex;
   align-items: flex-end;
   justify-content: space-around;
-  padding-top: 20px;
+  gap: 10px;
+  padding-top: 15px;
 }
 
 
 .salary-item {
   height: 100%;
   display: flex;
+  flex: 1;
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  gap: 10px;
-  color: #6b7280;
-  font-size: 13px;
+}
+
+
+.salary-value {
+  margin-bottom: 5px;
+  color: #9ca3af;
+  font-size: 11px;
 }
 
 
 .salary-bar {
   width: 48px;
+  max-width: 80%;
+  min-height: 2px;
   background: #60a5fa;
   border-radius: 6px 6px 0 0;
-  transition:
-    height 0.3s ease;
+  transition: height 0.4s ease;
 }
 
 
-/* =========================
-   趋势图
-========================= */
+.salary-item span {
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+
+/* =========================================================
+   首页趋势
+========================================================= */
 
 .trend-chart {
   width: 100%;
-  height: 190px;
+  height: 210px;
 }
 
 
-/* =========================
+.trend-empty {
+  height: 200px;
+}
+
+
+/* =========================================================
    高频技能
-========================= */
+========================================================= */
 
 .skill-list {
   display: flex;
@@ -905,11 +1155,108 @@ onBeforeUnmount(() => {
 }
 
 
-/* =========================
-   响应式
-========================= */
+/* =========================================================
+   状态
+========================================================= */
 
-@media (max-width: 1000px) {
+.error-box {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #b91c1c;
+}
+
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   历史记录占位
+========================================================= */
+
+.sub-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 26px;
+}
+
+
+.sub-page-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+}
+
+
+.sub-page-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+
+.page-badge {
+  padding: 8px 14px;
+  background: #eff6ff;
+  border-radius: 999px;
+  color: #2563eb;
+  font-size: 13px;
+}
+
+
+.history-placeholder {
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  text-align: center;
+}
+
+
+.history-icon {
+  width: 66px;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+  background: #eff6ff;
+  border-radius: 20px;
+  font-size: 30px;
+}
+
+
+.history-placeholder h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+
+.history-placeholder p {
+  margin: 0;
+  color: #9ca3af;
+}
+
+
+/* =========================================================
+   响应式
+========================================================= */
+
+@media (max-width: 1050px) {
 
   .cards {
     grid-template-columns: 1fr;
@@ -923,22 +1270,37 @@ onBeforeUnmount(() => {
 }
 
 
-@media (max-width: 700px) {
+@media (max-width: 760px) {
 
   .app {
-    display: block;
+    flex-direction: column;
   }
 
 
   .sidebar {
     width: 100%;
+    min-width: 0;
     min-height: auto;
-    padding: 18px;
+    padding: 20px;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
   }
 
 
   .brand p {
     margin-bottom: 18px;
+  }
+
+
+  nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+
+  .nav-item {
+    margin-bottom: 0;
   }
 
 
@@ -948,11 +1310,15 @@ onBeforeUnmount(() => {
 
 
   .page-header {
-    align-items: flex-start;
     flex-direction: column;
-    gap: 8px;
+    align-items: flex-start;
+  }
+
+
+  .sub-page-header {
+    flex-direction: column;
+    gap: 12px;
   }
 
 }
-
 </style>

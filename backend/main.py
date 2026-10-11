@@ -1583,3 +1583,243 @@ def recommend_jobs(request: JobRecommendRequest):
         "recommendations":
             top_jobs
     }
+# =========================================================
+# 趋势分析
+# =========================================================
+
+@app.get("/api/trends")
+def get_trends():
+    df = load_jobs()
+
+    # =====================================================
+    # 1. 岗位发布时间趋势
+    # =====================================================
+
+    monthly_trend = []
+
+    if "publish_date" in df.columns:
+        dates = pd.to_datetime(
+            df["publish_date"],
+            errors="coerce"
+        )
+
+        valid_dates = dates.dropna()
+
+        if not valid_dates.empty:
+            month_counts = (
+                valid_dates
+                .dt.to_period("M")
+                .value_counts()
+                .sort_index()
+            )
+
+            monthly_trend = [
+                {
+                    "month":
+                        str(period),
+
+                    "label":
+                        f"{period.month}月",
+
+                    "count":
+                        int(count)
+                }
+                for period, count
+                in month_counts.items()
+            ]
+
+    # =====================================================
+    # 2. 热门技能 Top 10
+    # =====================================================
+
+    skill_counter = Counter()
+
+    if "skills" in df.columns:
+        for value in df["skills"]:
+            skills = split_skills(value)
+
+            for skill in skills:
+                skill_counter[skill] += 1
+
+    top_skills = [
+        {
+            "name": skill,
+            "count": int(count)
+        }
+        for skill, count
+        in skill_counter.most_common(10)
+    ]
+
+    # =====================================================
+    # 3. 城市岗位数量 Top 8
+    # =====================================================
+
+    city_jobs = []
+
+    if "city" in df.columns:
+        city_counts = (
+            df["city"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .value_counts()
+            .head(8)
+        )
+
+        city_jobs = [
+            {
+                "city":
+                    city,
+
+                "count":
+                    int(count)
+            }
+            for city, count
+            in city_counts.items()
+        ]
+
+    # =====================================================
+    # 4. 城市平均薪资
+    # =====================================================
+
+    city_salary_data = {}
+
+    for _, row in df.iterrows():
+        city = clean_text(
+            row.get("city")
+        )
+
+        salary_min = salary_to_k(
+            row.get("salary_min")
+        )
+
+        salary_max = salary_to_k(
+            row.get("salary_max")
+        )
+
+        if (
+            not city
+            or salary_min is None
+            or salary_max is None
+        ):
+            continue
+
+        avg_salary = (
+            salary_min + salary_max
+        ) / 2
+
+        if city not in city_salary_data:
+            city_salary_data[city] = []
+
+        city_salary_data[city].append(
+            avg_salary
+        )
+
+    city_salary = []
+
+    for city, salaries in city_salary_data.items():
+        if not salaries:
+            continue
+
+        average = round(
+            sum(salaries)
+            / len(salaries),
+            1
+        )
+
+        city_salary.append({
+            "city":
+                city,
+
+            "avg_salary":
+                average,
+
+            "job_count":
+                len(salaries)
+        })
+
+    city_salary.sort(
+        key=lambda item:
+            item["avg_salary"],
+        reverse=True
+    )
+
+    city_salary = city_salary[:8]
+
+    # =====================================================
+    # 5. 整体统计
+    # =====================================================
+
+    salary_values = []
+
+    for _, row in df.iterrows():
+        salary_min = salary_to_k(
+            row.get("salary_min")
+        )
+
+        salary_max = salary_to_k(
+            row.get("salary_max")
+        )
+
+        if (
+            salary_min is not None
+            and salary_max is not None
+        ):
+            salary_values.append(
+                (
+                    salary_min
+                    + salary_max
+                ) / 2
+            )
+
+    overall_avg_salary = (
+        round(
+            sum(salary_values)
+            / len(salary_values),
+            1
+        )
+        if salary_values
+        else 0
+    )
+
+    # =====================================================
+    # 6. 返回
+    # =====================================================
+
+    return {
+        "summary": {
+            "job_count":
+                int(len(df)),
+
+            "city_count":
+                int(
+                    df["city"]
+                    .dropna()
+                    .astype(str)
+                    .str.strip()
+                    .nunique()
+                )
+                if "city" in df.columns
+                else 0,
+
+            "skill_count":
+                int(
+                    len(skill_counter)
+                ),
+
+            "avg_salary":
+                overall_avg_salary
+        },
+
+        "monthly_trend":
+            monthly_trend,
+
+        "top_skills":
+            top_skills,
+
+        "city_jobs":
+            city_jobs,
+
+        "city_salary":
+            city_salary
+    }
