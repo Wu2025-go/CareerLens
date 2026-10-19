@@ -236,7 +236,7 @@ def get_overview():
         else 0
     )
 
-    hot_industry = "软件开发"
+    hot_industry = df["job_category"].mode().iloc[0] if "job_category" in df.columns and not df["job_category"].mode().empty else "暂无数据"
 
     return {
         "job_count": int(job_count),
