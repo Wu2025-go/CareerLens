@@ -1,0 +1,106 @@
+name: CareerLens CI
+
+# 推送代码或创建、更新 Pull Request 时自动检查。
+"on":
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install backend dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Run backend checks
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -euo pipefail
+
+          # 六项接口检查需要运行中的后端；测试结束后自动停止。
+          python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 > backend.log 2>&1 &
+          backend_pid=$!
+          trap 'kill "$backend_pid" 2>/dev/null || true' EXIT
+
+          # 等待数据接口就绪，避免服务还没启动就开始测试。
+          python - <<'PY'
+          import time
+          from pathlib import Path
+          from urllib.error import URLError
+          from urllib.request import urlopen
+
+          deadline = time.monotonic() + 30
+          while time.monotonic() < deadline:
+              try:
+                  with urlopen("http://127.0.0.1:8000/api/overview", timeout=2) as response:
+                      if response.status == 200:
+                          print("Backend is ready.")
+                          break
+              except (URLError, TimeoutError, OSError):
+                  pass
+              time.sleep(0.5)
+          else:
+              log = Path("backend.log")
+              if log.exists():
+                  print(log.read_text(encoding="utf-8", errors="replace"))
+              raise SystemExit("Backend did not become ready within 30 seconds.")
+          PY
+
+          # 同时运行接口检查和推荐规则测试，后续新增 test_*.py 也会被发现。
+          python -m unittest discover -s tests -p "test_*.py" -v
+
+      - name: Show backend log on failure
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f backend.log ]; then
+            cat backend.log
+          fi
+
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
