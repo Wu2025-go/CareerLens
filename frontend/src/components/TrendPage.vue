@@ -597,7 +597,7 @@ const loadTrendData = async () => {
   try {
     const response =
       await fetch(
-        'http://127.0.0.1:8000/api/trends'
+        '/api/trends'
       )
 
     if (!response.ok) {
