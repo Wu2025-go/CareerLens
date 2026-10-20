@@ -1,11 +1,13 @@
 from pathlib import Path
 from collections import Counter
 import re
+import math
+from functools import lru_cache
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # =========================================================
@@ -25,7 +27,9 @@ class JobRecommendRequest(BaseModel):
     city: str | None = None
     keyword: str | None = None
     skills: list[str] | None = None
-    min_salary: float | None = None
+    # 单位为 K/月；0 表示不设置最低薪资。
+    min_salary: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    # 求职者本人学历，用于与岗位最低学历要求比较。
     education: str | None = None
 
 
@@ -36,7 +40,7 @@ class JobRecommendRequest(BaseModel):
 app = FastAPI(
     title="CareerLens API",
     description="CareerLens 职见后端服务",
-    version="0.6.0"
+    version="0.6.1"
 )
 
 
@@ -50,6 +54,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://127.0.0.1:5173"
     ],
+    # 兼容 Vite 因端口占用而自动使用 5174 等本地端口。
+    allow_origin_regex=r"http://(?:localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -94,10 +100,9 @@ def safe_float(value):
     try:
         if pd.isna(value):
             return None
-
-        return float(value)
-
-    except (TypeError, ValueError):
+        number = float(value)
+        return number if math.isfinite(number) else None
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -126,15 +131,11 @@ def load_jobs():
 
 
 def salary_to_k(value):
+    """沿用当前 CSV 约定：>=1000 按元/月处理，否则按 K/月处理。"""
     number = safe_float(value)
-
-    if number is None:
+    if number is None or number < 0:
         return None
-
-    if number >= 1000:
-        return number / 1000
-
-    return number
+    return number / 1000 if number >= 1000 else number
 
 
 def split_skills(value):
@@ -157,7 +158,7 @@ def split_skills(value):
         if not skill:
             continue
 
-        key = skill.lower()
+        key = normalize_skill_key(skill)
 
         if key not in seen:
             seen.add(key)
@@ -176,13 +177,146 @@ def normalize_skills(skills):
         if not skill:
             continue
 
-        key = skill.lower()
+        key = normalize_skill_key(skill)
 
         if key not in seen:
             seen.add(key)
             result.append(skill)
 
     return result
+
+
+# =========================================================
+# 匹配工具：保留展示名称，仅将比较时使用的键规范化
+# =========================================================
+
+_SKILL_ALIASES = {
+    "js": "javascript",
+    "ts": "typescript",
+    "golang": "go",
+    "vue.js": "vue",
+    "vuejs": "vue",
+    "vue2": "vue",
+    "vue3": "vue",
+    "vue 2": "vue",
+    "vue 3": "vue",
+    "react.js": "react",
+    "reactjs": "react",
+    "nodejs": "node.js",
+    "node js": "node.js",
+    "springboot": "spring boot",
+    "spring-boot": "spring boot",
+    "springcloud": "spring cloud",
+    "spring-cloud": "spring cloud",
+    "k8s": "kubernetes",
+    "csharp": "c#",
+    "c sharp": "c#",
+    "cplusplus": "c++",
+    "powerbi": "power bi",
+}
+
+
+def normalize_skill_key(value):
+    key = re.sub(r"\s+", " ", clean_text(value).casefold())
+    return _SKILL_ALIASES.get(key, key)
+
+
+@lru_cache(maxsize=256)
+def _keyword_pattern(key):
+    variants = {key}
+    variants.update(
+        alias for alias, canonical in _SKILL_ALIASES.items()
+        if canonical == key
+    )
+    alternatives = []
+    for variant in sorted(variants, key=lambda item: (-len(item), item)):
+        escaped = re.escape(variant).replace(r"\ ", r"\s*")
+        alternatives.append(escaped)
+    # 使用 ASCII 边界，让 Java开发 能匹配，同时排除 JavaScript、Django。
+    # 末尾同时限制 + 和 #，防止把 C++、C# 当成 C。
+    return re.compile(
+        r"(?<![A-Za-z0-9_])(?:" + "|".join(alternatives)
+        + r")(?![A-Za-z0-9_+#])",
+        re.IGNORECASE,
+    )
+
+
+def contains_keyword(text, keyword):
+    key = normalize_skill_key(keyword)
+    if not key:
+        return False
+    text = clean_text(text)
+    if re.search(r"[A-Za-z0-9]", key):
+        return bool(_keyword_pattern(key).search(text))
+    return key in text.casefold()
+
+
+def matches_job_keyword(text, keyword):
+    """支持 Java、Java 后端、Java后端等输入；多个词必须全部命中。"""
+    if contains_keyword(text, keyword):
+        return True
+    terms = re.findall(
+        r"[A-Za-z0-9_][A-Za-z0-9_.+#-]*|[\u3400-\u9fff]+",
+        clean_text(keyword),
+    )
+    return bool(terms) and all(contains_keyword(text, term) for term in terms)
+
+
+_UNRESTRICTED_EDUCATION = {
+    "不限", "学历不限", "不限学历", "无要求", "无学历要求",
+    "不要求学历", "全部", "any",
+}
+
+
+def is_unrestricted_education(value):
+    text = clean_text(value).casefold().replace(" ", "")
+    return text in _UNRESTRICTED_EDUCATION or text.startswith(
+        ("学历不限（", "学历不限(", "不限（", "不限(")
+    )
+
+
+def get_education_rank(value):
+    text = clean_text(value).casefold()
+    ranks = {
+        "小学": 0, "初中": 0,
+        "高中": 1, "中专": 1, "中技": 1, "职高": 1, "技校": 1,
+        "大专": 2, "专科": 2, "高职": 2,
+        "本科": 3, "学士": 3, "bachelor": 3,
+        "硕士": 4, "研究生": 4, "master": 4, "mba": 4,
+        "博士": 5, "phd": 5,
+    }
+    found = [rank for label, rank in ranks.items() if label in text]
+    # “博士研究生”是博士，“硕士研究生”是硕士。
+    if "博士" in text or "phd" in text:
+        if not any(label in text for label in ("本科", "学士", "大专", "专科", "硕士")):
+            return 5
+    return min(found) if found else None
+
+
+def education_is_eligible(candidate_education, job_education):
+    if is_unrestricted_education(job_education):
+        return True
+    candidate_rank = get_education_rank(candidate_education)
+    required_rank = get_education_rank(job_education)
+    if candidate_rank is None or required_rank is None:
+        # 缺失或未知要求无法确认符合条件，不记为学历匹配。
+        return False
+    if "以下" in clean_text(job_education):
+        return candidate_rank <= required_rank
+    return candidate_rank >= required_rank
+
+
+def normalize_city(value):
+    text = clean_text(value)
+    return text[:-1] if text.endswith("市") else text
+
+
+def recommendation_salary(row):
+    lower = salary_to_k(row.get("salary_min"))
+    upper = salary_to_k(row.get("salary_max"))
+    if lower is not None and upper is not None and lower > upper:
+        return None, None
+    return lower, upper
 
 
 # =========================================================
@@ -193,7 +327,7 @@ def normalize_skills(skills):
 def root():
     return {
         "message": "CareerLens API is running",
-        "version": "0.6.0"
+        "version": "0.6.1"
     }
 
 
@@ -410,7 +544,7 @@ def get_dashboard():
 
 
 # =========================================================
-# AI / RAG 问答
+# 岗位知识库问答（当前采用规则检索）
 # =========================================================
 
 @app.post("/api/ask")
@@ -488,19 +622,10 @@ def ask_question(request: AskRequest):
     requested_core_keywords = []
 
     for keyword in core_keywords:
-        if keyword.lower() in question_lower:
+        if contains_keyword(question, keyword):
             requested_core_keywords.append(
                 keyword
             )
-
-    # 避免 JavaScript 同时误匹配 Java
-    if (
-        "JavaScript" in requested_core_keywords
-        and "Java" in requested_core_keywords
-    ):
-        requested_core_keywords.remove(
-            "Java"
-        )
 
     # 避免 Spring Cloud / Spring Boot 同时重复计算 Spring
     if (
@@ -565,7 +690,7 @@ def ask_question(request: AskRequest):
         matched_core_keywords = []
 
         for keyword in requested_core_keywords:
-            if keyword.lower() in searchable_text:
+            if contains_keyword(searchable_text, keyword):
                 score += 5
                 matched_core_keywords.append(
                     keyword
@@ -579,7 +704,7 @@ def ask_question(request: AskRequest):
             return None
 
         for skill in row_skills:
-            if skill.lower() in question_lower:
+            if contains_keyword(question, skill):
                 score += 4
                 matched_skills.append(
                     skill
@@ -921,7 +1046,7 @@ def skill_match(request: SkillMatchRequest):
         search_df = df
 
     user_skill_set = {
-        skill.lower()
+        normalize_skill_key(skill)
         for skill in user_skills
     }
 
@@ -947,7 +1072,7 @@ def skill_match(request: SkillMatchRequest):
         .most_common()
     ):
         if (
-            skill.lower()
+            normalize_skill_key(skill)
             in user_skill_set
         ):
             strengths.append({
@@ -968,7 +1093,7 @@ def skill_match(request: SkillMatchRequest):
         .most_common()
     ):
         if (
-            skill.lower()
+            normalize_skill_key(skill)
             not in user_skill_set
         ):
             missing_skills.append({
@@ -997,7 +1122,7 @@ def skill_match(request: SkillMatchRequest):
 
         for skill in job_skills:
             if (
-                skill.lower()
+                normalize_skill_key(skill)
                 in user_skill_set
             ):
                 matched_skills.append(
@@ -1176,412 +1301,172 @@ def skill_match(request: SkillMatchRequest):
 
 @app.post("/api/recommend")
 def recommend_jobs(request: JobRecommendRequest):
+    """基于显式条件的规则推荐；match_score 是匹配分，不是录用概率。"""
     df = load_jobs()
 
-    # -----------------------------------------------------
-    # 1. 清洗用户条件
-    # -----------------------------------------------------
+    target_city = clean_text(request.city) or None
+    if target_city in {"不限", "全部", "全国", "所有城市"}:
+        target_city = None
+    keyword = clean_text(request.keyword) or None
+    education = clean_text(request.education) or None
+    if education and is_unrestricted_education(education):
+        education = None
+    if education and get_education_rank(education) is None:
+        raise HTTPException(status_code=400, detail="无法识别该学历，请选择高中、中专、大专、本科、硕士或博士。")
 
-    target_city = (
-        clean_text(request.city)
-        if request.city
-        else None
+    user_skills = normalize_skills(request.skills)
+    user_skill_set = {normalize_skill_key(skill) for skill in user_skills}
+    min_salary = request.min_salary if request.min_salary and request.min_salary > 0 else None
+
+    # 只对填写的维度计分，再按实际满分换算到 0～100。
+    # 城市通过候选集筛选，不人为叠加“城市匹配分”。
+    total_weight = (
+        (35 if keyword else 0)
+        + (30 if user_skills else 0)
+        + (15 if min_salary is not None else 0)
+        + (10 if education else 0)
     )
-
-    keyword = (
-        clean_text(request.keyword)
-        if request.keyword
-        else None
-    )
-
-    education = (
-        clean_text(request.education)
-        if request.education
-        else None
-    )
-
-    user_skills = normalize_skills(
-        request.skills
-    )
-
-    user_skill_set = {
-        skill.lower()
-        for skill in user_skills
-    }
-
-    no_conditions = (
-        not target_city
-        and not keyword
-        and not user_skills
-        and request.min_salary is None
-        and not education
-    )
-
-    # -----------------------------------------------------
-    # 2. 构造推荐结果
-    # -----------------------------------------------------
 
     def build_recommendations(search_df):
         recommendations = []
-
         for _, row in search_df.iterrows():
-            job_title = clean_text(
-                row.get("job_title")
-            )
+            job_title = clean_text(row.get("job_title"))
+            company_name = clean_text(row.get("company_name"))
+            city = clean_text(row.get("city"))
+            job_education = clean_text(row.get("education"))
+            experience = clean_text(row.get("experience"))
+            description = clean_text(row.get("job_description"))
+            category = clean_text(row.get("job_category"))
+            job_skills = split_skills(row.get("skills"))
+            salary_min_k, salary_max_k = recommendation_salary(row)
 
-            company_name = clean_text(
-                row.get("company_name")
-            )
-
-            city = clean_text(
-                row.get("city")
-            )
-
-            job_education = clean_text(
-                row.get("education")
-            )
-
-            experience = clean_text(
-                row.get("experience")
-            )
-
-            description = clean_text(
-                row.get("job_description")
-            )
-
-            job_skills = split_skills(
-                row.get("skills")
-            )
-
-            salary_min_k = salary_to_k(
-                row.get("salary_min")
-            )
-
-            salary_max_k = salary_to_k(
-                row.get("salary_max")
-            )
-
-            searchable_text = " ".join([
-                job_title,
-                description,
-                " ".join(job_skills)
-            ]).lower()
-
-            score = 0
+            score = 0.0
             reasons = []
-
-            matched_skills = []
-            missing_job_skills = []
-
-            # ---------------------------------------------
-            # 岗位方向
-            # ---------------------------------------------
+            primary_text = " ".join([job_title, category, " ".join(job_skills)])
+            searchable_text = " ".join([primary_text, description])
 
             if keyword:
-                if (
-                    keyword.lower()
-                    in searchable_text
-                ):
+                if not matches_job_keyword(searchable_text, keyword):
+                    continue
+                if matches_job_keyword(job_title, keyword):
                     score += 35
-                    reasons.append(
-                        "岗位方向匹配"
-                    )
+                    reasons.append("岗位名称符合目标方向")
+                elif matches_job_keyword(primary_text, keyword):
+                    score += 28
+                    reasons.append("岗位类别或技能符合目标方向")
                 else:
-                    continue
+                    score += 21
+                    reasons.append("岗位描述包含目标关键词")
 
-            # ---------------------------------------------
-            # 技能匹配
-            # ---------------------------------------------
-
+            matched_skills = [
+                skill for skill in job_skills
+                if normalize_skill_key(skill) in user_skill_set
+            ]
+            missing_job_skills = [
+                skill for skill in job_skills
+                if normalize_skill_key(skill) not in user_skill_set
+            ]
             if user_skills:
-                for skill in job_skills:
-                    if (
-                        skill.lower()
-                        in user_skill_set
-                    ):
-                        matched_skills.append(
-                            skill
-                        )
-                    else:
-                        missing_job_skills.append(
-                            skill
-                        )
-
-                if job_skills:
-                    skill_score = round(
-                        len(matched_skills)
-                        / len(job_skills)
-                        * 30
-                    )
-
-                    score += skill_score
-
-                if matched_skills:
-                    reasons.append(
-                        f"已掌握 {len(matched_skills)} 项岗位技能"
-                    )
-
-            else:
-                missing_job_skills = (
-                    job_skills.copy()
-                )
-
-            # ---------------------------------------------
-            # 最低薪资
-            # ---------------------------------------------
-
-            if request.min_salary is not None:
-                if (
-                    salary_max_k is not None
-                    and
-                    salary_max_k
-                    >= request.min_salary
-                ):
-                    score += 15
-                    reasons.append(
-                        "薪资符合预期"
-                    )
-
-                elif salary_max_k is not None:
+                # 技能无交集或岗位未提供技能时，不以其他条件制造高匹配度。
+                if not matched_skills:
                     continue
-
-            # ---------------------------------------------
-            # 学历
-            # ---------------------------------------------
-
-            if (
-                education
-                and job_education
-            ):
-                if (
-                    education
-                    in job_education
-                    or
-                    job_education
-                    in education
-                ):
-                    score += 10
-                    reasons.append(
-                        "学历要求匹配"
-                    )
-
-            # ---------------------------------------------
-            # 无条件推荐
-            # ---------------------------------------------
-
-            if no_conditions:
-                score = 50
-
+                score += len(matched_skills) / len(job_skills) * 30
                 reasons.append(
-                    "综合岗位推荐"
+                    f"已掌握 {len(matched_skills)}/{len(job_skills)} 项岗位技能"
                 )
 
-            if score <= 0:
-                continue
+            if min_salary is not None:
+                # 用户输入单位为 K/月；保守比较薪资下限，缺失时不能确认达标。
+                if salary_min_k is None or salary_min_k < min_salary:
+                    continue
+                score += 15
+                reasons.append("岗位薪资下限达到预期")
+
+            if education:
+                if not education_is_eligible(education, job_education):
+                    continue
+                score += 10
+                reasons.append("个人学历符合岗位要求")
+
+            if total_weight:
+                match_score = max(0, min(100, round(score / total_weight * 100)))
+            else:
+                # 仅选择城市或未填写条件时展示岗位，不冒充技能测评结果。
+                match_score = 50
+                reasons.append(
+                    "目标城市岗位，补充技能可进一步计算匹配度"
+                    if target_city and normalize_city(city) == normalize_city(target_city)
+                    else "综合岗位浏览，补充技能可进一步计算匹配度"
+                )
 
             recommendations.append({
-                "job_id":
-                    clean_text(
-                        row.get("job_id")
-                    ),
-
-                "job_title":
-                    job_title,
-
-                "company_name":
-                    company_name,
-
-                "city":
-                    city,
-
-                "salary_min":
-                    salary_min_k,
-
-                "salary_max":
-                    salary_max_k,
-
-                "education":
-                    job_education,
-
-                "experience":
-                    experience,
-
-                "skills":
-                    job_skills,
-
-                "matched_skills":
-                    matched_skills,
-
-                "missing_skills":
-                    missing_job_skills,
-
-                "match_score":
-                    min(
-                        int(score),
-                        100
-                    ),
-
-                "reasons":
-                    reasons
+                "job_id": clean_text(row.get("job_id")),
+                "job_title": job_title,
+                "company_name": company_name,
+                "city": city,
+                "salary_min": salary_min_k,
+                "salary_max": salary_max_k,
+                "education": job_education,
+                "experience": experience,
+                "skills": job_skills,
+                "matched_skills": matched_skills,
+                "missing_skills": missing_job_skills,
+                "match_score": int(match_score),
+                "reasons": reasons,
             })
 
-        recommendations.sort(
-            key=lambda item: (
-                item["match_score"],
-                len(
-                    item["matched_skills"]
-                )
-            ),
-            reverse=True
-        )
-
+        recommendations.sort(key=lambda item: (
+            -item["match_score"],
+            -len(item["matched_skills"]),
+            item["job_title"],
+            item["job_id"],
+        ))
         return recommendations
-
-    # -----------------------------------------------------
-    # 3. 城市优先 + 自动扩展
-    # -----------------------------------------------------
 
     fallback = False
     fallback_message = None
-
-    if (
-        target_city
-        and "city" in df.columns
-    ):
-        city_df = df[
-            df["city"]
-            .astype(str)
-            .str.strip()
-            == target_city
-        ]
-
-        recommendations = (
-            build_recommendations(
-                city_df
-            )
-        )
-
+    if target_city and "city" in df.columns:
+        city_mask = df["city"].map(normalize_city) == normalize_city(target_city)
+        recommendations = build_recommendations(df[city_mask])
         if not recommendations:
             fallback = True
-
-            other_city_df = df[
-                df["city"]
-                .astype(str)
-                .str.strip()
-                != target_city
-            ]
-
-            recommendations = (
-                build_recommendations(
-                    other_city_df
-                )
+            # 扩展城市时仍保留岗位方向、技能、薪资与学历条件。
+            recommendations = build_recommendations(df[~city_mask])
+            fallback_message = (
+                f"当前知识库中暂未找到{target_city}符合全部条件的岗位，"
+                "已自动扩展到其他城市的相近岗位。"
+                if recommendations else
+                f"当前知识库中暂未找到{target_city}符合条件的岗位，"
+                "扩展其他城市后仍未找到合适结果。"
             )
-
-            if recommendations:
-                fallback_message = (
-                    f"当前知识库中暂未找到"
-                    f"{target_city}符合全部条件的岗位，"
-                    f"已自动扩展到其他城市的相近岗位。"
-                )
-            else:
-                fallback_message = (
-                    f"当前知识库中暂未找到"
-                    f"{target_city}符合条件的岗位，"
-                    f"扩展其他城市后仍未找到合适结果。"
-                )
-
     else:
-        recommendations = (
-            build_recommendations(df)
-        )
+        recommendations = build_recommendations(df)
+        if target_city:
+            fallback = True
+            fallback_message = "当前岗位数据未提供城市字段，已按其他条件检索，请核实岗位所在地。"
 
-    # -----------------------------------------------------
-    # 4. Top 10
-    # -----------------------------------------------------
-
-    top_jobs = (
-        recommendations[:10]
+    top_jobs = recommendations[:10]
+    conditions = {
+        "city": target_city,
+        "keyword": keyword,
+        "skills": user_skills,
+        "min_salary": request.min_salary,
+        "education": education,
+    }
+    message = (
+        f"根据你的求职条件，共匹配到 {len(recommendations)} 条岗位，"
+        f"当前展示推荐度最高的 {len(top_jobs)} 条。"
+        if top_jobs else
+        "当前岗位知识库暂未找到符合条件的岗位，"
+        "建议调整薪资、岗位方向或技能条件。"
     )
-
-    # -----------------------------------------------------
-    # 5. 无结果
-    # -----------------------------------------------------
-
-    if not top_jobs:
-        return {
-            "total": 0,
-
-            "message":
-                "当前岗位知识库暂未找到符合条件的岗位，"
-                "建议放宽城市、薪资或岗位方向条件。",
-
-            "conditions": {
-                "city":
-                    target_city,
-
-                "keyword":
-                    keyword,
-
-                "skills":
-                    user_skills,
-
-                "min_salary":
-                    request.min_salary,
-
-                "education":
-                    education
-            },
-
-            "fallback":
-                fallback,
-
-            "fallback_message":
-                fallback_message,
-
-            "recommendations":
-                []
-        }
-
-    # -----------------------------------------------------
-    # 6. 返回
-    # -----------------------------------------------------
-
     return {
-        "total":
-            len(recommendations),
-
-        "message": (
-            f"根据你的求职条件，"
-            f"共匹配到 {len(recommendations)} 条岗位，"
-            f"当前展示推荐度最高的 "
-            f"{len(top_jobs)} 条。"
-        ),
-
-        "conditions": {
-            "city":
-                target_city,
-
-            "keyword":
-                keyword,
-
-            "skills":
-                user_skills,
-
-            "min_salary":
-                request.min_salary,
-
-            "education":
-                education
-        },
-
-        "fallback":
-            fallback,
-
-        "fallback_message":
-            fallback_message,
-
-        "recommendations":
-            top_jobs
+        "total": len(recommendations),
+        "message": message,
+        "conditions": conditions,
+        "fallback": fallback,
+        "fallback_message": fallback_message,
+        "recommendations": top_jobs,
     }
 # =========================================================
 # 趋势分析
