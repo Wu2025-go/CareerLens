@@ -183,11 +183,11 @@ const loadDashboard = async () => {
       dashboardResponse
     ] = await Promise.all([
       fetch(
-        'http://127.0.0.1:8000/api/overview'
+        '/api/overview'
       ),
 
       fetch(
-        'http://127.0.0.1:8000/api/dashboard'
+        '/api/dashboard'
       )
     ])
 
