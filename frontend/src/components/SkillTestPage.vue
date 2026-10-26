@@ -1140,13 +1140,13 @@ const formatSalary = (
 .page-header h1 {
   margin: 0 0 8px;
   font-size: 28px;
-  color: #111827;
+  color: var(--text);
 }
 
 
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 14px;
 }
 
@@ -1154,8 +1154,8 @@ const formatSalary = (
 .data-badge {
   padding: 8px 14px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 13px;
 }
 
@@ -1165,7 +1165,7 @@ const formatSalary = (
 .test-card {
   padding: 26px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 16px;
 }
 
@@ -1187,7 +1187,7 @@ const formatSalary = (
 
 .section-heading p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -1195,8 +1195,8 @@ const formatSalary = (
 .selected-count {
   padding: 6px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
   font-size: 12px;
 }
 
@@ -1212,10 +1212,10 @@ const formatSalary = (
 
 .skill-option {
   padding: 10px 15px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid var(--border);
   border-radius: 9px;
   background: #ffffff;
-  color: #4b5563;
+  color: var(--text-2);
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1223,13 +1223,13 @@ const formatSalary = (
 
 .skill-option:hover {
   border-color: #93c5fd;
-  color: #2563eb;
+  color: var(--primary);
 }
 
 
 .skill-option.selected {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: var(--primary);
+  border-color: var(--primary);
   color: #ffffff;
 }
 
@@ -1247,7 +1247,7 @@ const formatSalary = (
   flex: 1;
   height: 42px;
   padding: 0 14px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid var(--border);
   border-radius: 9px;
   outline: none;
   font-family: inherit;
@@ -1255,7 +1255,7 @@ const formatSalary = (
 
 
 .custom-skill-row input:focus {
-  border-color: #3b82f6;
+  border-color: var(--brand-2);
 }
 
 
@@ -1263,8 +1263,8 @@ const formatSalary = (
   padding: 0 18px;
   border: 1px solid #bfdbfe;
   border-radius: 9px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   cursor: pointer;
 }
 
@@ -1277,7 +1277,7 @@ const formatSalary = (
   gap: 16px;
   margin-top: 20px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--surface-2);
   border-radius: 10px;
 }
 
@@ -1285,7 +1285,7 @@ const formatSalary = (
 .selected-label {
   flex-shrink: 0;
   padding-top: 6px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
@@ -1304,8 +1304,8 @@ const formatSalary = (
   padding: 6px 10px;
   border: none;
   border-radius: 7px;
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--primary-soft);
+  color: #4338ca;
   cursor: pointer;
 }
 
@@ -1319,19 +1319,19 @@ const formatSalary = (
   gap: 20px;
   margin-top: 22px;
   padding-top: 20px;
-  border-top: 1px solid #eef2f7;
+  border-top: 1px solid var(--border);
 }
 
 
 .city-row label {
-  color: #111827;
+  color: var(--text);
   font-weight: 600;
 }
 
 
 .city-row p {
   margin: 5px 0 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
 }
 
@@ -1340,7 +1340,7 @@ const formatSalary = (
   min-width: 170px;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid var(--border);
   border-radius: 9px;
   background: #ffffff;
   outline: none;
@@ -1368,20 +1368,20 @@ const formatSalary = (
 
 .clear-button {
   background: #ffffff;
-  border: 1px solid #dbe1ea;
-  color: #6b7280;
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
 
 
 .test-button {
   border: none;
-  background: #2563eb;
+  background: var(--primary);
   color: #ffffff;
 }
 
 
 .test-button:hover {
-  background: #1d4ed8;
+  background: #4338ca;
 }
 
 
@@ -1400,7 +1400,7 @@ const formatSalary = (
   margin-top: 20px;
   padding: 26px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 16px;
 }
 
@@ -1412,7 +1412,7 @@ const formatSalary = (
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: 10px solid #dbeafe;
+  border: 10px solid var(--primary-soft);
   border-radius: 50%;
   background: #f8fbff;
 }
@@ -1420,12 +1420,12 @@ const formatSalary = (
 
 .score-circle strong {
   font-size: 32px;
-  color: #2563eb;
+  color: var(--primary);
 }
 
 
 .score-circle span {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 12px;
 }
 
@@ -1436,28 +1436,28 @@ const formatSalary = (
 
 
 .result-label {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
 
 .summary-content h2 {
   margin: 7px 0;
-  color: #111827;
+  color: var(--text);
   font-size: 24px;
 }
 
 
 .summary-content p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-2);
   line-height: 1.7;
 }
 
 
 .target-city {
   margin-top: 13px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
@@ -1475,7 +1475,7 @@ const formatSalary = (
 .analysis-card {
   padding: 22px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 14px;
 }
 
@@ -1495,7 +1495,7 @@ const formatSalary = (
 
 .analysis-title p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
 }
 
@@ -1558,7 +1558,7 @@ const formatSalary = (
 
 
 .empty-text {
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -1586,13 +1586,13 @@ const formatSalary = (
 
 .recommend-header p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
 
 .recommend-header > span {
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
@@ -1606,7 +1606,7 @@ const formatSalary = (
 .job-card {
   padding: 20px 22px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 14px;
 }
 
@@ -1626,7 +1626,7 @@ const formatSalary = (
 
 .job-top p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
@@ -1638,7 +1638,7 @@ const formatSalary = (
 
 .salary {
   display: block;
-  color: #2563eb;
+  color: var(--primary);
   font-size: 18px;
 }
 
@@ -1648,8 +1648,8 @@ const formatSalary = (
   margin-top: 6px;
   padding: 4px 8px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 12px;
 }
 
@@ -1659,7 +1659,7 @@ const formatSalary = (
   flex-wrap: wrap;
   gap: 16px;
   margin-top: 14px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
@@ -1675,7 +1675,7 @@ const formatSalary = (
   width: 52px;
   flex-shrink: 0;
   padding-top: 5px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 12px;
 }
 
@@ -1701,8 +1701,8 @@ const formatSalary = (
 
 
 .job-tags .missing {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
 }
 
 
@@ -1768,8 +1768,8 @@ const formatSalary = (
   align-items: center;
   gap: 12px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
 
 
@@ -1777,15 +1777,15 @@ const formatSalary = (
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--brand-2);
   animation: pulse 1s infinite;
 }
 
 
 .empty-jobs {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
 
 

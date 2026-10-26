@@ -9,13 +9,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from backend.rag import augment_answer
+
 
 # =========================================================
 # 请求模型
 # =========================================================
 
 class AskRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=2000)
 
 
 class SkillMatchRequest(BaseModel):
@@ -547,8 +549,7 @@ def get_dashboard():
 # 岗位知识库问答（当前采用规则检索）
 # =========================================================
 
-@app.post("/api/ask")
-def ask_question(request: AskRequest):
+def retrieve_question(request: AskRequest):
     question = request.question.strip()
 
     if not question:
@@ -787,7 +788,13 @@ def ask_question(request: AskRequest):
                 matched_skills,
 
             "matched_keywords":
-                matched_core_keywords
+                matched_core_keywords,
+
+            # 原文直接来自该条 CSV 记录，不由规则模板生成或改写。
+            "job_description": job_description,
+            "source": clean_text(row.get("source")),
+            "publish_date": clean_text(row.get("publish_date")),
+            "dataset": "jobs_sample.csv"
         }
 
     # -----------------------------------------------------
@@ -879,12 +886,14 @@ def ask_question(request: AskRequest):
 
     if not results:
         return {
+            "answer_mode": "rules",
+            "matched_count": 0,
             "question":
                 question,
 
             "answer":
                 "当前岗位知识库中暂未检索到"
-                "与该问题高度相关的岗位。",
+                "与该问题高度相关的岗位。请补充岗位方向或技能关键词，例如：深圳 Java 后端岗位需要哪些技能？",
 
             "target_city":
                 target_city,
@@ -966,6 +975,8 @@ def ask_question(request: AskRequest):
         )
 
     return {
+        "answer_mode": "rules",
+        "matched_count": len(results),
         "question":
             question,
 
@@ -987,6 +998,12 @@ def ask_question(request: AskRequest):
         "matches":
             top_results
     }
+
+
+@app.post("/api/ask")
+def ask_question(request: AskRequest):
+    retrieved = retrieve_question(request)
+    return augment_answer(request.question.strip(), retrieved)
 
 
 # =========================================================

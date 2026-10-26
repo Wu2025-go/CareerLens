@@ -1,3 +1,54 @@
+/* =========================================================
+   CareerLens · 全局设计系统
+   统一配色、阴影、圆角、字体，供各组件 scoped 样式引用
+========================================================= */
+
+:root {
+  /* 品牌渐变 */
+  --brand-1: #6366f1;
+  --brand-2: #3b82f6;
+  --brand-grad: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+  --brand-grad-soft: linear-gradient(135deg, #818cf8 0%, #60a5fa 100%);
+
+  /* 侧边栏深底 */
+  --side-1: #1e1b4b;
+  --side-2: #312e81;
+  --side-grad: linear-gradient(180deg, #1e1b4b 0%, #312e81 60%, #3730a3 100%);
+
+  /* 背景与表面 */
+  --bg: #eef1f8;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+
+  /* 文本 */
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #94a3b8;
+
+  /* 边框 */
+  --border: #e8ecf3;
+
+  /* 主题色 */
+  --primary: #4f46e5;
+  --primary-soft: #eef2ff;
+  --green: #10b981;
+  --green-soft: #ecfdf5;
+  --orange: #f59e0b;
+  --orange-soft: #fff7ed;
+  --red: #ef4444;
+  --red-soft: #fef2f2;
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 14px 38px rgba(15, 23, 42, 0.12);
+
+  /* 圆角 */
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-xs: 9px;
+}
+
 html,
 body,
 #app {
@@ -8,9 +59,23 @@ body,
 }
 
 body {
-  font-family:
-    "Microsoft YaHei",
-    "PingFang SC",
-    Arial,
-    sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* 按钮微交互 */
+button {
+  font-family: inherit;
+  transition: transform 0.12s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+button:active {
+  transform: translateY(1px) scale(0.98);
 }

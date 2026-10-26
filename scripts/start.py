@@ -36,6 +36,15 @@ def main() -> int:
         print("正在创建项目 Python 环境……", flush=True)
         venv.EnvBuilder(with_pip=True).create(env_dir)
 
+    # 兼容曾中断创建、已有解释器但尚未安装 pip 的项目环境。
+    pip_ready = subprocess.run(
+        [str(python), "-m", "pip", "--version"], cwd=PROJECT_ROOT,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    if pip_ready.returncode != 0:
+        print("正在补装项目环境中的 pip……", flush=True)
+        run([str(python), "-m", "ensurepip", "--upgrade"])
+
     print("1/3 安装后端依赖……", flush=True)
     run([str(python), "-m", "pip", "install", "-r", "requirements.txt"])
     print("2/3 安装依赖并构建前端……", flush=True)
