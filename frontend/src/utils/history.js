@@ -210,7 +210,7 @@ export const getHistoryByType = (
 // =========================================================
 
 export const HISTORY_TYPE_LABELS = {
-  ask: 'AI 问答',
+  ask: '就业问答',
   skill: '技能测评',
   recommend: '岗位推荐'
 }
@@ -221,7 +221,7 @@ export const HISTORY_TYPE_LABELS = {
 // =========================================================
 
 export const HISTORY_TYPE_ICONS = {
-  ask: 'AI',
+  ask: '问',
   skill: '技',
   recommend: '岗'
 }

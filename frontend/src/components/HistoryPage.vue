@@ -42,7 +42,7 @@ const filters = [
   },
   {
     value: 'ask',
-    label: 'AI 问答'
+    label: '就业问答'
   },
   {
     value: 'skill',
@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
         </h1>
 
         <p>
-          统一查看 AI 问答、技能测评和岗位推荐的使用记录
+          统一查看 就业问答、技能测评和岗位推荐的使用记录
         </p>
 
       </div>
@@ -368,6 +368,10 @@ onBeforeUnmount(() => {
       </span>
 
     </header>
+
+    <p class="storage-notice">
+      记录仅保存在当前浏览器，最多保留 100 条。换设备或清除网站数据后无法恢复，暂不支持跨设备同步。
+    </p>
 
 
     <!-- ===================================================
@@ -396,7 +400,7 @@ onBeforeUnmount(() => {
       <div class="summary-card">
 
         <p>
-          AI 问答
+          就业问答
         </p>
 
         <strong>
@@ -525,7 +529,7 @@ onBeforeUnmount(() => {
         {{
           records.length
             ? '可以尝试更换筛选类型或搜索关键词。'
-            : '完成 AI 问答、技能测评或岗位推荐后，记录会显示在这里。'
+            : '完成 就业问答、技能测评或岗位推荐后，记录会显示在这里。'
         }}
       </p>
 
@@ -746,6 +750,20 @@ onBeforeUnmount(() => {
 
 <style scoped>
 
+.storage-notice { margin: 0 0 20px; padding: 12px 16px; background: var(--primary-soft); border-radius: var(--radius-xs); color: var(--text-2); font-size: 13px; line-height: 1.7; }
+
+* {
+  box-sizing: border-box;
+}
+
+
+.history-page {
+  width: 100%;
+}
+
+
+
+
 * {
   box-sizing: border-box;
 }
@@ -771,14 +789,14 @@ onBeforeUnmount(() => {
 
 .page-header h1 {
   margin: 0 0 8px;
-  color: #111827;
+  color: var(--text);
   font-size: 28px;
 }
 
 
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 14px;
 }
 
@@ -786,8 +804,8 @@ onBeforeUnmount(() => {
 .page-badge {
   padding: 8px 14px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 13px;
 }
 
@@ -811,21 +829,21 @@ onBeforeUnmount(() => {
 .summary-card {
   padding: 21px 22px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 14px;
 }
 
 
 .summary-card p {
   margin: 0 0 10px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
 }
 
 
 .summary-card strong {
   display: block;
-  color: #111827;
+  color: var(--text);
   font-size: 28px;
 }
 
@@ -833,7 +851,7 @@ onBeforeUnmount(() => {
 .summary-card span {
   display: block;
   margin-top: 7px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 11px;
 }
 
@@ -850,7 +868,7 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
   padding: 15px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 13px;
 }
 
@@ -866,20 +884,20 @@ onBeforeUnmount(() => {
   padding: 8px 13px;
   border: none;
   border-radius: 8px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
   cursor: pointer;
 }
 
 
 .filter-button:hover {
-  color: #2563eb;
+  color: var(--primary);
 }
 
 
 .filter-button.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-weight: 600;
 }
 
@@ -894,14 +912,14 @@ onBeforeUnmount(() => {
   width: 220px;
   height: 38px;
   padding: 0 12px;
-  border: 1px solid #dbe1ea;
+  border: 1px solid var(--border);
   border-radius: 8px;
   outline: none;
 }
 
 
 .search-input:focus {
-  border-color: #60a5fa;
+  border-color: var(--brand-2);
 }
 
 
@@ -935,7 +953,7 @@ onBeforeUnmount(() => {
 .history-card {
   padding: 20px 22px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 14px;
 }
 
@@ -961,8 +979,8 @@ onBeforeUnmount(() => {
 
 
 .record-icon.type-ask {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 
@@ -993,28 +1011,28 @@ onBeforeUnmount(() => {
 
 .record-type {
   margin-bottom: 5px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 11px;
 }
 
 
 .record-heading h3 {
   margin: 0;
-  color: #111827;
+  color: var(--text);
   font-size: 17px;
 }
 
 
 .record-time {
   flex-shrink: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
 }
 
 
 .record-summary {
   margin: 10px 0 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 13px;
   line-height: 1.7;
 }
@@ -1031,8 +1049,8 @@ onBeforeUnmount(() => {
 .meta-list span {
   padding: 5px 8px;
   border-radius: 6px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
   font-size: 11px;
 }
 
@@ -1060,13 +1078,13 @@ onBeforeUnmount(() => {
 
 .detail-button {
   border: 1px solid #bfdbfe;
-  color: #2563eb;
+  color: var(--primary);
 }
 
 
 .delete-button {
-  border: 1px solid #e5e7eb;
-  color: #9ca3af;
+  border: 1px solid var(--border);
+  color: var(--text-3);
 }
 
 
@@ -1084,7 +1102,7 @@ onBeforeUnmount(() => {
   margin-top: 16px;
   padding: 16px;
   border-radius: 10px;
-  background: #f8fafc;
+  background: var(--surface-2);
 }
 
 
@@ -1103,7 +1121,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: 12px;
   background: #ffffff;
-  border: 1px solid #eef2f7;
+  border: 1px solid var(--border);
   border-radius: 8px;
 }
 
@@ -1111,7 +1129,7 @@ onBeforeUnmount(() => {
 .detail-item > span {
   display: block;
   margin-bottom: 6px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 11px;
 }
 
@@ -1119,7 +1137,7 @@ onBeforeUnmount(() => {
 .detail-item > strong {
   display: block;
   overflow-wrap: anywhere;
-  color: #374151;
+  color: var(--text-2);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.6;
@@ -1128,7 +1146,7 @@ onBeforeUnmount(() => {
 
 
 .no-detail {
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
   text-align: center;
 }
@@ -1146,7 +1164,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   padding: 30px;
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 15px;
   text-align: center;
 }
@@ -1160,14 +1178,14 @@ onBeforeUnmount(() => {
   justify-content: center;
   margin-bottom: 18px;
   border-radius: 18px;
-  background: #eff6ff;
+  background: var(--primary-soft);
   font-size: 28px;
 }
 
 
 .empty-card h2 {
   margin: 0 0 9px;
-  color: #111827;
+  color: var(--text);
   font-size: 19px;
 }
 
@@ -1175,7 +1193,7 @@ onBeforeUnmount(() => {
 .empty-card p {
   max-width: 460px;
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
   line-height: 1.7;
 }

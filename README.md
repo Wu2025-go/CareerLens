@@ -1,7 +1,11 @@
 
 # CareerLens 职见
-**在线体验：** https://careerlens-e1fa.onrender.com
+**已有线上服务：** <https://careerlens-e1fa.onrender.com>（本次RAG修改仍需发布，线上以实际提交为准）
 > 面向大学生的就业岗位数据智能分析与技能画像平台
+
+本地整合版（2026-10-26）的运行和交接说明见 [START_HERE.md](START_HERE.md)。直接在项目根目录执行 `python scripts/start.py`，完成后打开 <http://127.0.0.1:8000>。
+
+本版增加了“岗位关键词检索 → DeepSeek API生成 → 引用编号与逐字摘录校验”的问答链路。模型成功且引用校验通过时，接口返回 `answer_mode=rag`；未配置、无证据或调用失败时明确显示规则检索结果。代码已做模拟接口检查，真实DeepSeek调用仍需在本机配置密钥后验收。操作见 [docs/RAG_SETUP.md](docs/RAG_SETUP.md)，技术底稿见 [docs/TECHNICAL_DRAFT.md](docs/TECHNICAL_DRAFT.md)。
 
 CareerLens（职见）是一个基于招聘岗位数据构建的就业分析与职业辅助平台。
 
@@ -64,7 +68,7 @@ CareerLens 致力于帮助大学生解决四个核心问题：
 
 系统通过后端接口动态读取并统计当前岗位数据，减少固定展示数据带来的偏差。
 
-### 2.2 AI 就业问答
+### 2.2 就业知识问答
 
 用户可以通过自然语言询问就业相关问题。
 
@@ -82,8 +86,9 @@ CareerLens 致力于帮助大学生解决四个核心问题：
 - 相关岗位信息
 - 企业名称
 - 薪资及工作经验要求
+- 岗位描述原文、岗位编号、来源平台标记和发布日期
 
-当前问答功能以岗位数据检索和规则分析为基础，后续可进一步引入大语言模型和 RAG 技术。
+问答使用现有关键词检索作为检索器，默认向 `deepseek-flash` 提供最多5条岗位证据，再校验模型返回的每条引用编号和原文摘录。成功时展示模型结论、可点击的岗位引用和摘录；失败时保留规则结果并说明状态。当前没有embedding或向量库；引用校验不能保证结论没有事实错误。
 
 ### 2.3 技能测评
 
@@ -170,7 +175,7 @@ CareerLens 致力于帮助大学生解决四个核心问题：
 
 系统支持保存用户的使用记录，包括：
 
-- AI 就业问答记录
+- 就业知识问答记录
 - 技能测评记录
 - 岗位推荐记录
 
@@ -183,7 +188,7 @@ CareerLens 致力于帮助大学生解决四个核心问题：
 - 删除单条记录
 - 清空全部历史记录
 
-当前历史记录使用浏览器 LocalStorage 保存，不依赖用户账户系统。
+当前历史记录使用浏览器 LocalStorage 保存，最多保留 100 条。记录仅存在于当前浏览器，换设备不能自动同步；清除网站数据后无法恢复。
 
 ---
 
@@ -344,35 +349,14 @@ CareerLens/
 
 CareerLens 采用前后端分离架构。
 
-```text
-                    用户浏览器
-                         |
-                         v
-                 Vue 3 + Vite
-                         |
-             页面交互与数据可视化
-                         |
-                         v
-                    REST API
-                         |
-                         v
-                 FastAPI 后端
-                         |
-          +--------------+--------------+
-          |              |              |
-          v              v              v
-      岗位检索        技能匹配        数据统计
-          |              |              |
-          +--------------+--------------+
-                         |
-                         v
-                  Pandas 数据处理
-                         |
-                         v
-                CSV 岗位知识库
-                         |
-                         v
-                  2000 条岗位数据
+```mermaid
+flowchart TD
+  B[Vue 浏览器页面] --> A[FastAPI 接口]
+  A --> R[岗位检索与推荐]
+  A --> S[Pandas 统计分析]
+  R --> D[CSV 岗位样本]
+  S --> D
+  B --> H[浏览器历史记录]
 ```
 
 历史记录目前由前端使用 LocalStorage 保存。
@@ -385,12 +369,13 @@ CareerLens 当前已实现并使用以下主要接口：
 
 | 请求方式 | 接口 | 功能 |
 | --- | --- | --- |
-| GET | / | 后端运行状态 |
+| GET | /health | 一体化部署的运行状态 |
 | GET | /api/overview | 首页概览数据 |
 | GET | /api/dashboard | Dashboard 统计数据 |
 | POST | /api/ask | 就业岗位问答 |
 | POST | /api/skill-match | 技能测评 |
 | POST | /api/recommend | 智能岗位推荐 |
+| GET | /api/trends | 趋势分析数据 |
 
 实际可用接口以当前 FastAPI 自动生成的接口文档为准。
 
@@ -426,84 +411,63 @@ GET http://127.0.0.1:8000/api/overview
 
 ## 八、项目运行方法
 
-### 8.1 环境准备
+### 8.1 一体化启动（推荐）
 
-运行本项目需要安装：
-
-- Python
-- Node.js
-- npm
-- Git（用于克隆和版本管理）
-
-### 8.2 克隆项目
+安装 Python 3.10 及以上版本和 Node.js（CI 使用 Node.js 24），解压完整源码后，在项目根目录执行：
 
 ```bash
-git clone https://github.com/Wu2025-go/CareerLens.git
-cd CareerLens
+python scripts/start.py
 ```
 
-### 8.3 安装后端依赖
+该脚本创建项目 Python 环境、安装依赖、构建前端并启动服务。保持终端打开，访问 <http://127.0.0.1:8000>；API 文档为 <http://127.0.0.1:8000/docs>。首次运行需要网络。
 
-在项目根目录运行：
+### 8.2 前后端分别开发
+
+终端一：
 
 ```bash
 python -m pip install -r requirements.txt
-```
-
-### 8.4 启动后端
-
-```bash
 python -m uvicorn backend.main:app --reload --port 8000
 ```
 
-启动成功后，可以访问：
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-也可以使用以下地址检查首页概览接口：
-
-```text
-http://127.0.0.1:8000/api/overview
-```
-
-### 8.5 安装前端依赖
-
-新打开一个终端，在项目根目录输入：
+终端二：
 
 ```bash
-cd frontend
-npm install
+npm --prefix frontend ci
+npm --prefix frontend run dev
 ```
 
-### 8.6 启动前端
+打开 Vite 终端实际显示的地址，默认 <http://localhost:5173>。
+
+### 8.3 Render 一体化部署
+
+构建命令：
 
 ```bash
-npm run dev
+pip install -r requirements.txt && npm --prefix frontend ci && npm --prefix frontend run build
 ```
 
-默认访问：
+启动命令：
 
-```text
-http://localhost:5173/
+```bash
+python -m uvicorn backend.web:app --host 0.0.0.0 --port $PORT
 ```
 
-如果 5173 端口已经被占用，Vite 可能自动使用其他端口，例如：
+SPA 静态托管与导航回退位于 `backend/web.py`。`scripts/start.py` 用于本地安装、构建和启动。前端支持直接访问 `/ask`、`/skills`、`/recommend`、`/trends`、`/history` 及刷新后保持对应页面。
 
-```text
-http://localhost:5174/
+### 8.4 自动化检查
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
-以终端实际显示的地址为准。
+另开终端运行 `python -m uvicorn backend.main:app --port 8000`，然后执行：
 
-### 8.7 运行注意事项
-
-1. 前后端需要分别启动。
-2. 不要关闭正在运行服务的终端。
-3. 确保后端正常读取岗位 CSV 数据。
-4. 如果页面出现加载失败，先检查后端是否启动。
-5. 如果浏览器无法打开前端，检查 Vite 的实际运行端口。
+```bash
+python -m unittest discover -s tests -p "test_*.py" -v
+node --test frontend/tests/*.test.js
+npm --prefix frontend run build
+```
 
 ---
 
@@ -515,7 +479,7 @@ http://localhost:5174/
 就业市场总览
       |
       v
-AI 就业问答
+就业知识问答
       |
       v
 个人技能测评
@@ -588,8 +552,8 @@ CareerLens 后续计划逐步完善以下能力：
 
 ### AI 能力
 
-- 探索大语言模型接入
-- 探索 RAG 检索增强问答
+- 完成真实模型调用验收，记录问答质量、Token用量与耗时
+- 根据问题集评测结果比较语义检索或混合检索
 - 提升复杂就业问题的理解能力
 - 提供更细致的职业技能分析
 
@@ -605,7 +569,7 @@ CareerLens 后续计划逐步完善以下能力：
 
 ## 十二、系统界面展示
 
-以下截图来自 CareerLens 当前功能版本。
+以下截图为此前功能版本存档。新版样式和原文展示以本地整合版实际运行页面为准。
 
 ### 12.1 就业市场总览
 
@@ -613,11 +577,11 @@ CareerLens 后续计划逐步完善以下能力：
 
 ![就业市场总览](docs/screenshots/01-dashboard.png)
 
-### 12.2 AI 就业问答
+### 12.2 就业知识问答
 
 通过自然语言检索岗位知识库，展示目标岗位的技能需求与相关招聘信息。
 
-![AI 就业问答](docs/screenshots/02-ai-ask.png)
+![就业知识问答](docs/screenshots/02-ai-ask.png)
 
 ### 12.3 技能测评
 
@@ -639,7 +603,7 @@ CareerLens 后续计划逐步完善以下能力：
 
 ### 12.6 历史记录
 
-统一管理 AI 问答、技能测评和岗位推荐使用记录。
+统一管理 就业问答、技能测评和岗位推荐使用记录。
 
 ![历史记录](docs/screenshots/06-history.png)
 

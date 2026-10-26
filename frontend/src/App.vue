@@ -1,5 +1,6 @@
 <script setup>
 import {
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -8,24 +9,20 @@ import {
   watch
 } from 'vue'
 
-import * as echarts from 'echarts'
+import { usePageNavigation } from './utils/navigation'
 
-import AskPage from './components/AskPage.vue'
-import SkillTestPage from './components/SkillTestPage.vue'
-import JobRecommendPage from './components/JobRecommendPage.vue'
-import TrendPage from './components/TrendPage.vue'
-import HistoryPage from './components/HistoryPage.vue'
+const AskPage = defineAsyncComponent(() => import('./components/AskPage.vue'))
+const SkillTestPage = defineAsyncComponent(() => import('./components/SkillTestPage.vue'))
+const JobRecommendPage = defineAsyncComponent(() => import('./components/JobRecommendPage.vue'))
+const TrendPage = defineAsyncComponent(() => import('./components/TrendPage.vue'))
+const HistoryPage = defineAsyncComponent(() => import('./components/HistoryPage.vue'))
 
 
 /* =========================================================
    页面切换
 ========================================================= */
 
-const activePage = ref('dashboard')
-
-const setPage = (page) => {
-  activePage.value = page
-}
+const { activePage, setPage, navigate } = usePageNavigation()
 
 
 /* =========================================================
@@ -80,6 +77,9 @@ const renderTrendChart = async () => {
     return
   }
 
+  const { default: echarts } = await import('./utils/charts')
+  if (activePage.value !== 'dashboard' || !trendChartRef.value) return
+
   if (trendChartInstance) {
     trendChartInstance.dispose()
     trendChartInstance = null
@@ -92,7 +92,17 @@ const renderTrendChart = async () => {
 
   trendChartInstance.setOption({
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
+      borderColor: '#e8ecf3',
+      borderWidth: 1,
+      padding: [10, 12],
+      textStyle: {
+        color: '#0f172a',
+        fontSize: 12
+      },
+      extraCssText:
+        'border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);'
     },
 
     grid: {
@@ -161,8 +171,16 @@ const renderTrendChart = async () => {
         },
 
         areaStyle: {
-          color: '#bfdbfe',
-          opacity: 0.3
+          color: new echarts.graphic.LinearGradient(
+            0,
+            0,
+            0,
+            1,
+            [
+              { offset: 0, color: 'rgba(59, 130, 246, 0.30)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
+            ]
+          )
         }
       }
     ]
@@ -355,101 +373,115 @@ onBeforeUnmount(() => {
 
       <div class="brand">
 
-        <h2>
-          CareerLens
-        </h2>
+        <div class="brand-logo">
+          CL
+        </div>
 
-        <p>
-          职见
-        </p>
+        <div class="brand-text">
+
+          <h2>
+            CareerLens
+          </h2>
+
+          <p>
+            职见
+          </p>
+
+        </div>
 
       </div>
 
 
       <nav>
 
-        <div
+        <a href="/" :aria-current="activePage === 'dashboard' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'dashboard'
           }"
           @click="
-            setPage('dashboard')
+            navigate($event, 'dashboard')
           "
         >
-          首页 · 总览
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+          <span>首页 · 总览</span>
+        </a>
 
 
-        <div
+        <a href="/ask" :aria-current="activePage === 'ask' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'ask'
           }"
           @click="
-            setPage('ask')
+            navigate($event, 'ask')
           "
         >
-          AI 问答
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 9.6 9.6 0 0 1-4-1L3 20l1.5-5a8.38 8.38 0 0 1-1-4 8.5 8.5 0 0 1 17 0z"/></svg>
+          <span>就业问答</span>
+        </a>
 
 
-        <div
+        <a href="/skills" :aria-current="activePage === 'skills' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'skills'
           }"
           @click="
-            setPage('skills')
+            navigate($event, 'skills')
           "
         >
-          技能测评
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>
+          <span>技能测评</span>
+        </a>
 
 
-        <div
+        <a href="/recommend" :aria-current="activePage === 'recommend' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'recommend'
           }"
           @click="
-            setPage('recommend')
+            navigate($event, 'recommend')
           "
         >
-          岗位推荐
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>岗位推荐</span>
+        </a>
 
 
-        <div
+        <a href="/trends" :aria-current="activePage === 'trends' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'trends'
           }"
           @click="
-            setPage('trends')
+            navigate($event, 'trends')
           "
         >
-          趋势分析
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 16v-5"/><path d="M13 16V8"/><path d="M18 16v-9"/></svg>
+          <span>趋势分析</span>
+        </a>
 
 
-        <div
+        <a href="/history" :aria-current="activePage === 'history' ? 'page' : undefined"
           class="nav-item"
           :class="{
             active:
               activePage === 'history'
           }"
           @click="
-            setPage('history')
+            navigate($event, 'history')
           "
         >
-          历史记录
-        </div>
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+          <span>历史记录</span>
+        </a>
 
       </nav>
 
@@ -461,6 +493,12 @@ onBeforeUnmount(() => {
     ==================================================== -->
 
     <main class="main">
+
+      <section v-if="activePage === 'not-found'" class="error-box">
+        <h1>页面不存在</h1>
+        <p>请通过左侧导航选择功能，或返回首页。</p>
+        <button @click="setPage('dashboard')">返回首页</button>
+      </section>
 
 
       <!-- =================================================
@@ -500,9 +538,17 @@ onBeforeUnmount(() => {
 
           <div class="card">
 
-            <p>
-              岗位总量
-            </p>
+            <div class="card-top">
+
+              <span class="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </span>
+
+              <p>
+                岗位总量
+              </p>
+
+            </div>
 
             <strong>
               {{ overview.jobCount }}
@@ -513,9 +559,17 @@ onBeforeUnmount(() => {
 
           <div class="card">
 
-            <p>
-              平均薪资
-            </p>
+            <div class="card-top">
+
+              <span class="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              </span>
+
+              <p>
+                平均薪资
+              </p>
+
+            </div>
 
             <strong>
               ¥{{ overview.avgSalary }}k
@@ -526,9 +580,17 @@ onBeforeUnmount(() => {
 
           <div class="card">
 
-            <p>
-              热门行业
-            </p>
+            <div class="card-top">
+
+              <span class="card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s4 4 4 9a4 4 0 0 1-8 0c0-5 4-9 4-9z"/></svg>
+              </span>
+
+              <p>
+                热门行业
+              </p>
+
+            </div>
 
             <strong>
               {{ overview.hotIndustry }}
@@ -740,7 +802,7 @@ onBeforeUnmount(() => {
 
 
       <!-- =================================================
-           AI 问答
+           就业问答
       ================================================== -->
 
       <AskPage
@@ -810,8 +872,8 @@ onBeforeUnmount(() => {
   display: flex;
   width: 100%;
   min-height: 100vh;
-  background: #f6f8fb;
-  color: #111827;
+  background: var(--bg);
+  color: var(--text);
 }
 
 
@@ -820,49 +882,91 @@ onBeforeUnmount(() => {
 ========================================================= */
 
 .sidebar {
-  width: 220px;
-  min-width: 220px;
+  width: 244px;
+  min-width: 244px;
   min-height: 100vh;
-  padding: 30px 22px;
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  padding: 30px 20px;
+  background: var(--side-grad);
+  box-shadow: 6px 0 24px rgba(30, 27, 75, 0.18);
+  position: sticky;
+  top: 0;
 }
 
 
-.brand h2 {
-  margin: 0;
-  color: #111827;
-  font-size: 22px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 8px 26px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 
-.brand p {
-  margin: 6px 0 30px;
-  color: #2563eb;
+.brand-logo {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 700;
   font-size: 18px;
+  backdrop-filter: blur(4px);
+}
+
+
+.brand-text h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 19px;
+  letter-spacing: 0.3px;
+}
+
+
+.brand-text p {
+  margin: 2px 0 0;
+  color: rgba(199, 210, 254, 0.85);
+  font-size: 13px;
 }
 
 
 .nav-item {
-  padding: 13px 16px;
-  margin-bottom: 8px;
-  border-radius: 10px;
-  color: #6b7280;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  border-radius: 11px;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 14.5px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 
 .nav-item:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 
 .nav-item.active {
-  background: #eff6ff;
-  color: #2563eb;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--brand-2);
+}
+
+
+.nav-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
 }
 
 
@@ -892,13 +996,14 @@ onBeforeUnmount(() => {
 
 .page-header h1 {
   margin: 0;
-  color: #111827;
-  font-size: 28px;
+  color: var(--text);
+  font-size: 27px;
+  letter-spacing: 0.2px;
 }
 
 
 .page-header span {
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 14px;
 }
 
@@ -917,21 +1022,64 @@ onBeforeUnmount(() => {
 
 
 .card {
-  padding: 24px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  position: relative;
+  padding: 22px 24px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--brand-grad);
+}
+
+
+.card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+
+.card-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: var(--brand-grad);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+
+.card-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 
 .card p {
-  margin: 0 0 12px;
-  color: #6b7280;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 14px;
 }
 
 
 .card strong {
-  color: #111827;
+  color: var(--text);
   font-size: 30px;
   font-weight: 600;
 }
@@ -956,15 +1104,16 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 280px;
   padding: 22px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 
 .panel h3 {
   margin: 0 0 24px;
-  color: #111827;
+  color: var(--text);
   font-size: 19px;
 }
 
@@ -984,14 +1133,14 @@ onBeforeUnmount(() => {
 .city-name {
   width: 48px;
   flex-shrink: 0;
-  color: #374151;
+  color: var(--text-2);
 }
 
 
 .city-count {
   width: 30px;
   flex-shrink: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
   text-align: right;
 }
@@ -1001,14 +1150,14 @@ onBeforeUnmount(() => {
   flex: 1;
   height: 12px;
   overflow: hidden;
-  background: #eef2f7;
+  background: var(--border);
   border-radius: 999px;
 }
 
 
 .bar {
   height: 100%;
-  background: #3b82f6;
+  background: var(--brand-grad);
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -1040,7 +1189,7 @@ onBeforeUnmount(() => {
 
 .salary-value {
   margin-bottom: 5px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 11px;
 }
 
@@ -1049,7 +1198,7 @@ onBeforeUnmount(() => {
   width: 48px;
   max-width: 80%;
   min-height: 2px;
-  background: #60a5fa;
+  background: var(--brand-grad);
   border-radius: 6px 6px 0 0;
   transition: height 0.4s ease;
 }
@@ -1057,7 +1206,7 @@ onBeforeUnmount(() => {
 
 .salary-item span {
   margin-top: 10px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 12px;
 }
 
@@ -1090,9 +1239,10 @@ onBeforeUnmount(() => {
 
 .skill {
   padding: 9px 14px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   border-radius: 8px;
+  font-size: 13px;
 }
 
 
@@ -1115,7 +1265,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   min-height: 150px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -1152,7 +1302,7 @@ onBeforeUnmount(() => {
     padding: 20px;
     border-right: none;
     border-bottom:
-      1px solid #e5e7eb;
+      1px solid var(--border);
   }
 
 

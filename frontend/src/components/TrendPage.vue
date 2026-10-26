@@ -7,7 +7,7 @@ import {
   ref
 } from 'vue'
 
-import * as echarts from 'echarts'
+import echarts from '../utils/charts'
 
 
 /* =========================================================
@@ -100,7 +100,13 @@ const renderTrendChart = () => {
 
   trendChart.setOption({
     tooltip: {
-      trigger: 'axis'
+      trigger: 'axis',
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
+      borderColor: '#e8ecf3',
+      borderWidth: 1,
+      padding: [10, 12],
+      textStyle: { color: '#0f172a', fontSize: 12 },
+      extraCssText: 'border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);'
     },
 
     grid: {
@@ -180,18 +186,26 @@ const renderTrendChart = () => {
 
         lineStyle: {
           width: 3,
-          color: '#2563eb'
+          color: '#3b82f6'
         },
 
         itemStyle: {
-          color: '#2563eb',
+          color: '#3b82f6',
           borderColor: '#ffffff',
           borderWidth: 2
         },
 
         areaStyle: {
-          color: '#bfdbfe',
-          opacity: 0.35
+          color: new echarts.graphic.LinearGradient(
+            0,
+            0,
+            0,
+            1,
+            [
+              { offset: 0, color: 'rgba(59, 130, 246, 0.30)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.02)' }
+            ]
+          )
         }
       }
     ]
@@ -227,10 +241,13 @@ const renderSkillChart = () => {
   skillChart.setOption({
     tooltip: {
       trigger: 'axis',
-
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
+      borderColor: '#e8ecf3',
+      borderWidth: 1,
+      padding: [10, 12],
+      textStyle: { color: '#0f172a', fontSize: 12 },
+      extraCssText: 'border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);'
     },
 
     grid: {
@@ -338,10 +355,13 @@ const renderCityChart = () => {
   cityChart.setOption({
     tooltip: {
       trigger: 'axis',
-
-      axisPointer: {
-        type: 'shadow'
-      }
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
+      borderColor: '#e8ecf3',
+      borderWidth: 1,
+      padding: [10, 12],
+      textStyle: { color: '#0f172a', fontSize: 12 },
+      extraCssText: 'border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);'
     },
 
     grid: {
@@ -413,7 +433,7 @@ const renderCityChart = () => {
         barMaxWidth: 48,
 
         itemStyle: {
-          color: '#60a5fa',
+          color: '#3b82f6',
 
           borderRadius: [
             6,
@@ -458,10 +478,13 @@ const renderSalaryChart = () => {
   salaryChart.setOption({
     tooltip: {
       trigger: 'axis',
-
-      axisPointer: {
-        type: 'shadow'
-      },
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(255, 255, 255, 0.96)',
+      borderColor: '#e8ecf3',
+      borderWidth: 1,
+      padding: [10, 12],
+      textStyle: { color: '#0f172a', fontSize: 12 },
+      extraCssText: 'border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);',
 
       formatter(params) {
         const item =
@@ -547,7 +570,7 @@ const renderSalaryChart = () => {
         barMaxWidth: 48,
 
         itemStyle: {
-          color: '#2563eb',
+          color: '#3b82f6',
 
           borderRadius: [
             6,
@@ -566,7 +589,7 @@ const renderSalaryChart = () => {
             return `${params.value}K`
           },
 
-          color: '#2563eb'
+          color: '#3b82f6'
         }
       }
     ]
@@ -1217,14 +1240,14 @@ onBeforeUnmount(() => {
 
 .page-header h1 {
   margin: 0 0 8px;
-  color: #111827;
+  color: var(--text);
   font-size: 28px;
 }
 
 
 .page-header p {
   margin: 0;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 14px;
   line-height: 1.6;
 }
@@ -1234,8 +1257,8 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   padding: 8px 14px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 13px;
 }
 
@@ -1254,24 +1277,26 @@ onBeforeUnmount(() => {
 
 
 .summary-card {
+  position: relative;
   min-width: 0;
   padding: 22px 24px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 
 .summary-card p {
   margin: 0 0 10px;
-  color: #6b7280;
+  color: var(--text-2);
   font-size: 14px;
 }
 
 
 .summary-card strong {
   display: block;
-  color: #111827;
+  color: var(--text);
   font-size: 29px;
   font-weight: 650;
 }
@@ -1280,7 +1305,7 @@ onBeforeUnmount(() => {
 .summary-card span {
   display: block;
   margin-top: 8px;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
 }
 
@@ -1302,9 +1327,10 @@ onBeforeUnmount(() => {
   min-width: 0;
   padding: 22px;
   overflow: hidden;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 
@@ -1320,14 +1346,14 @@ onBeforeUnmount(() => {
 
 .chart-header h2 {
   margin: 0 0 6px;
-  color: #111827;
+  color: var(--text);
   font-size: 18px;
 }
 
 
 .chart-header p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1337,8 +1363,8 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   padding: 5px 9px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
   font-size: 11px;
 }
 
@@ -1354,7 +1380,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 13px;
 }
 
@@ -1365,9 +1391,10 @@ onBeforeUnmount(() => {
 
 .ranking-card {
   padding: 22px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 
@@ -1381,14 +1408,14 @@ onBeforeUnmount(() => {
 
 .ranking-header h2 {
   margin: 0 0 5px;
-  color: #111827;
+  color: var(--text);
   font-size: 18px;
 }
 
 
 .ranking-header p {
   margin: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 12px;
 }
 
@@ -1396,8 +1423,8 @@ onBeforeUnmount(() => {
 .ranking-header > span {
   padding: 5px 10px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   font-size: 11px;
 }
 
@@ -1423,16 +1450,16 @@ onBeforeUnmount(() => {
   justify-content: center;
   flex-shrink: 0;
   border-radius: 7px;
-  background: #f3f4f6;
-  color: #6b7280;
+  background: var(--surface-2);
+  color: var(--text-2);
   font-size: 12px;
   font-weight: 600;
 }
 
 
 .rank-number.top {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 
@@ -1440,7 +1467,7 @@ onBeforeUnmount(() => {
   width: 120px;
   flex-shrink: 0;
   overflow: hidden;
-  color: #374151;
+  color: var(--text-2);
   font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1451,14 +1478,14 @@ onBeforeUnmount(() => {
   flex: 1;
   height: 10px;
   overflow: hidden;
-  background: #eef2f7;
+  background: var(--border);
   border-radius: 999px;
 }
 
 
 .rank-bar {
   height: 100%;
-  background: #3b82f6;
+  background: var(--brand-2);
   border-radius: 999px;
   transition: width 0.4s ease;
 }
@@ -1466,7 +1493,7 @@ onBeforeUnmount(() => {
 
 .ranking-item strong {
   min-width: 32px;
-  color: #111827;
+  color: var(--text);
   text-align: right;
 }
 
@@ -1474,14 +1501,14 @@ onBeforeUnmount(() => {
 .ranking-item > span {
   width: 46px;
   flex-shrink: 0;
-  color: #9ca3af;
+  color: var(--text-3);
   font-size: 11px;
 }
 
 
 .ranking-empty {
   padding: 40px;
-  color: #9ca3af;
+  color: var(--text-3);
   text-align: center;
 }
 
@@ -1499,8 +1526,8 @@ onBeforeUnmount(() => {
 
 
 .status-card {
-  border: 1px solid #e5e7eb;
-  color: #6b7280;
+  border: 1px solid var(--border);
+  color: var(--text-2);
 }
 
 
