@@ -653,6 +653,10 @@ def retrieve_question(request: AskRequest):
             row.get("job_title")
         )
 
+        job_category = clean_text(
+            row.get("job_category")
+        )
+
         company_name = clean_text(
             row.get("company_name")
         )
@@ -679,6 +683,7 @@ def retrieve_question(request: AskRequest):
 
         searchable_text = " ".join([
             job_title,
+            job_category,
             company_name,
             education,
             experience,
@@ -700,8 +705,9 @@ def retrieve_question(request: AskRequest):
         if (
             requested_core_keywords
             and
-            not matched_core_keywords
+            len(matched_core_keywords) != len(requested_core_keywords)
         ):
+            # 多个明确关键词必须由同一岗位满足，不能混合不同岗位的部分命中。
             return None
 
         for skill in row_skills:
@@ -756,6 +762,8 @@ def retrieve_question(request: AskRequest):
 
             "job_title":
                 job_title,
+
+            "job_category": job_category,
 
             "company_name":
                 company_name,

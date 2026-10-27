@@ -1,0 +1,750 @@
+{
+  "tested_on": "2026-10-27",
+  "scope": "Local keyword retrieval replay and mocked-model regression tests; no real provider calls or online deployment in this record",
+  "base_application_commit": "b04fa746e270f6f2d2e9f03569fc75d1b7449d5c",
+  "dataset_sha256": "daa7d14a2d8ec7e284f0b339fd0cf78e6cc2ff4a63cf9ae4df7ae9501ee227a1",
+  "automated_tests": {
+    "tested_on": "2026-10-27",
+    "tests_run": 78,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "real_provider_requests": 0,
+    "model_responses": "MockTransport for RAG tests; rules mode for API smoke tests"
+  },
+  "new_regression_tests_failed_on_original_code": 5,
+  "new_regression_tests_passed_on_fixed_code": 5,
+  "source_sha256": {
+    "backend/main.py": "959e19d7386783b77c2f97890b9dd314d2bc343876585d4f6b51005902dfe5a3",
+    "backend/rag.py": "fbe1b9162c8ebb0a28c7cccca2e473b0a37eced358cacaea1ecea4c05afc47b4",
+    "tests/test_ask_evidence.py": "55d5b9ebafa157952fd633039267be79e211b5cfa2f9cfca4e85fb15c270719f",
+    "tests/test_rag.py": "ca4086d585e964d2aef90c3e0bb3d4e9525d1ca3ff55c8500d032730c9a7ad0d"
+  },
+  "cases": [
+    {
+      "before": {
+        "question": "北京 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 59,
+        "fallback": false,
+        "target_city": "北京",
+        "matches": [
+          {
+            "job_id": "JOB_0081",
+            "job_title": "文案实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "脚本撰写、热点追踪、数据分析、新媒体矩阵、B站、社群运营、评论区运营、留存率、转化率、SEO",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0134",
+            "job_title": "供应链实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Excel、仓储管理、合同管理、承运商管理、金蝶、数据分析、S&OP、询价议价、报关报检",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0154",
+            "job_title": "公关实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "公关传播、Excel、新闻稿撰写、数据分析、信息流广告、达人营销",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0165",
+            "job_title": "广告投放实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "文案撰写、SEM、数据分析、SEO、整合营销、百度推广、信息流广告、CRM",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0324",
+            "job_title": "供应链管培生（校招）",
+            "job_category": null,
+            "city": "北京",
+            "skills": "S&OP、数据透视表、WMS、进出口流程、数据分析、询价议价",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "北京 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 3,
+        "fallback": false,
+        "target_city": "北京",
+        "matches": [
+          {
+            "job_id": "JOB_0582",
+            "job_title": "数据运营分析师（校招）",
+            "job_category": "数据分析",
+            "city": "北京",
+            "skills": "透视分析、数据透视表、指标体系、Python、数据建模、SQL调优、数据清洗、Tableau、NumPy、MySQL",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_1351",
+            "job_title": "用户增长分析师（应届生）",
+            "job_category": "数据分析",
+            "city": "北京",
+            "skills": "NumPy、A/B测试、假设检验、数据清洗、留存分析、Pandas、预测模型、Python、数据建模",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_1962",
+            "job_title": "业务分析实习生（可转正）",
+            "job_category": "数据分析",
+            "city": "北京",
+            "skills": "指标体系、竞品分析、埋点、数据建模、R语言、Python、帆软报表、SQL调优、Hive",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "深圳 Java 后端开发岗位需要哪些技能？",
+        "matched_count": 7,
+        "fallback": false,
+        "target_city": "深圳",
+        "matches": [
+          {
+            "job_id": "JOB_0622",
+            "job_title": "后端开发工程师（分布式系统方向）（校招）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "高并发、Maven、Java、Netty、Zookeeper、MyBatis、CI/CD、数据结构与算法、MongoDB",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0053",
+            "job_title": "Java后端开发（实习转正）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0161",
+            "job_title": "Java开发工程师（管培生）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Maven、Zookeeper、单元测试、MySQL、Netty、MongoDB、Redis、Tomcat、Spring Cloud、Java",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0228",
+            "job_title": "数据仓库开发工程师（应届生）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "HBase、Hadoop、DolphinScheduler、Java、MapReduce、ETL、Spark调优",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_1221",
+            "job_title": "测试开发工程师（AI测试方向）（校招）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Robotframework、缺陷管理、Java、Git、Shell、Fiddler、性能测试、禅道、黑盒测试",
+            "matched_keywords": [
+              "Java"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "深圳 Java 后端开发岗位需要哪些技能？",
+        "matched_count": 7,
+        "fallback": false,
+        "target_city": "深圳",
+        "matches": [
+          {
+            "job_id": "JOB_0622",
+            "job_title": "后端开发工程师（分布式系统方向）（校招）",
+            "job_category": "后端开发",
+            "city": "深圳",
+            "skills": "高并发、Maven、Java、Netty、Zookeeper、MyBatis、CI/CD、数据结构与算法、MongoDB",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0161",
+            "job_title": "Java开发工程师（管培生）",
+            "job_category": "后端开发",
+            "city": "深圳",
+            "skills": "Maven、Zookeeper、单元测试、MySQL、Netty、MongoDB、Redis、Tomcat、Spring Cloud、Java",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0053",
+            "job_title": "Java后端开发（实习转正）",
+            "job_category": "后端开发",
+            "city": "深圳",
+            "skills": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0228",
+            "job_title": "数据仓库开发工程师（应届生）",
+            "job_category": "数据开发",
+            "city": "深圳",
+            "skills": "HBase、Hadoop、DolphinScheduler、Java、MapReduce、ETL、Spark调优",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_1221",
+            "job_title": "测试开发工程师（AI测试方向）（校招）",
+            "job_category": "测试开发",
+            "city": "深圳",
+            "skills": "Robotframework、缺陷管理、Java、Git、Shell、Fiddler、性能测试、禅道、黑盒测试",
+            "matched_keywords": [
+              "Java"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "广州 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 29,
+        "fallback": false,
+        "target_city": "广州",
+        "matches": [
+          {
+            "job_id": "JOB_0334",
+            "job_title": "社群运营实习生",
+            "job_category": null,
+            "city": "广州",
+            "skills": "新媒体矩阵、IP打造、阅读量分析、活动策划、留存率、数据分析、用户运营",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0388",
+            "job_title": "跨境电商实习生",
+            "job_category": null,
+            "city": "广州",
+            "skills": "达人合作、独立站、数据分析、库存管理、京东快车、客单价",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0415",
+            "job_title": "物流实习生",
+            "job_category": null,
+            "city": "广州",
+            "skills": "数据分析、合同管理、JIT、供应商管理、仓储管理、进出口流程、采购管理、TMS",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0432",
+            "job_title": "内容运营专员（应届生）",
+            "job_category": null,
+            "city": "广州",
+            "skills": "Excel、新媒体矩阵、阅读量分析、数据分析、转化率、脚本撰写、用户运营、评论区运营",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0469",
+            "job_title": "文案编辑（校招）",
+            "job_category": null,
+            "city": "广州",
+            "skills": "活动策划、小红书、热点追踪、数据分析、微博、私域运营、微信公众号、用户分层、用户增长",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "广州 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 20,
+        "fallback": true,
+        "target_city": "广州",
+        "matches": [
+          {
+            "job_id": "JOB_0009",
+            "job_title": "BI分析实习生",
+            "job_category": "数据分析",
+            "city": "杭州",
+            "skills": "Google Analytics、Power BI、Excel、数据透视表、商业洞察、Python、统计分析、透视分析、SPSS",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_0013",
+            "job_title": "数据科学实习生",
+            "job_category": "数据分析",
+            "city": "杭州",
+            "skills": "Python、回归分析、数据透视表、用户画像、Tableau、NumPy、假设检验、指标体系、帆软报表",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_0043",
+            "job_title": "分析师管培生（校招）",
+            "job_category": "数据分析",
+            "city": "上海",
+            "skills": "数据可视化、商业洞察、Python、SQL调优、Power BI、R语言、数据建模、业务分析、Excel、Tableau",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_0182",
+            "job_title": "实时计算开发工程师（Flink方向）-应届生",
+            "job_category": "数据开发",
+            "city": "武汉",
+            "skills": "数据治理、SQL、数据质量、Spark、Python、Airflow、Git、数据仓库",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_0364",
+            "job_title": "经营分析师（校招）",
+            "job_category": "数据分析",
+            "city": "武汉",
+            "skills": "回归分析、SQL调优、Python、FineBI、SQL、Power BI、SPSS",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "杭州 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 18,
+        "fallback": false,
+        "target_city": "杭州",
+        "matches": [
+          {
+            "job_id": "JOB_0115",
+            "job_title": "跨境电商运营（应届生）",
+            "job_category": null,
+            "city": "杭州",
+            "skills": "直播带货、ROI、SEO、独立站、私域运营、数据分析、天猫运营、万相台、生意参谋",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0171",
+            "job_title": "店铺运营实习生",
+            "job_category": null,
+            "city": "杭州",
+            "skills": "Shopify、数据分析、巨量千川、亚马逊运营、Excel、DSR评分、SEM",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0197",
+            "job_title": "短视频运营（应届）",
+            "job_category": null,
+            "city": "杭州",
+            "skills": "数据分析、私域运营、新媒体运营、用户分层、评论区运营、转化率",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0802",
+            "job_title": "市场实习生（可转正）",
+            "job_category": null,
+            "city": "杭州",
+            "skills": "腾讯广告、用户洞察、整合营销、数据分析、CRM、小红书投放",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_1017",
+            "job_title": "新媒体营销实习生",
+            "job_category": null,
+            "city": "杭州",
+            "skills": "公关传播、ROI分析、Excel、活动策划、SEO、文案撰写、数据分析、私域运营、PPT、预算管理",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "杭州 Python 数据分析岗位需要哪些技能？",
+        "matched_count": 3,
+        "fallback": false,
+        "target_city": "杭州",
+        "matches": [
+          {
+            "job_id": "JOB_0009",
+            "job_title": "BI分析实习生",
+            "job_category": "数据分析",
+            "city": "杭州",
+            "skills": "Google Analytics、Power BI、Excel、数据透视表、商业洞察、Python、统计分析、透视分析、SPSS",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_0013",
+            "job_title": "数据科学实习生",
+            "job_category": "数据分析",
+            "city": "杭州",
+            "skills": "Python、回归分析、数据透视表、用户画像、Tableau、NumPy、假设检验、指标体系、帆软报表",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          },
+          {
+            "job_id": "JOB_1084",
+            "job_title": "业务分析师（应届）",
+            "job_category": "数据分析",
+            "city": "杭州",
+            "skills": "数据建模、Hive、业务分析、数据清洗、Python、MySQL",
+            "matched_keywords": [
+              "数据分析",
+              "Python"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "北京 JavaScript 前端岗位需要哪些技能？",
+        "matched_count": 10,
+        "fallback": false,
+        "target_city": "北京",
+        "matches": [
+          {
+            "job_id": "JOB_0086",
+            "job_title": "Web前端开发（实习转正）",
+            "job_category": null,
+            "city": "北京",
+            "skills": "React Native、Sass、Element UI、CSS3、Vue 3、Vue.js、Tailwind CSS、Jest、Webpack、JavaScript",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0368",
+            "job_title": "应届生-前端开发工程师",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Tailwind CSS、React Native、浏览器兼容、Redux、JavaScript、Axios、响应式布局、Vite、Node.js、ES6",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0815",
+            "job_title": "应届生-前端开发工程师",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Vite、Flutter、Angular、Element UI、Pinia、Jest、JavaScript、CSS3",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0224",
+            "job_title": "H5开发工程师（校招）",
+            "job_category": null,
+            "city": "北京",
+            "skills": "前端工程化、Vue 3、Vuex、Node.js、Git、JavaScript、Jest",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0291",
+            "job_title": "前端实习生（可转正）",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Ant Design、Vue.js、Redux、Jest、性能优化、微信小程序、Angular",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "北京 JavaScript 前端岗位需要哪些技能？",
+        "matched_count": 10,
+        "fallback": false,
+        "target_city": "北京",
+        "matches": [
+          {
+            "job_id": "JOB_0086",
+            "job_title": "Web前端开发（实习转正）",
+            "job_category": "前端开发",
+            "city": "北京",
+            "skills": "React Native、Sass、Element UI、CSS3、Vue 3、Vue.js、Tailwind CSS、Jest、Webpack、JavaScript",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0368",
+            "job_title": "应届生-前端开发工程师",
+            "job_category": "前端开发",
+            "city": "北京",
+            "skills": "Tailwind CSS、React Native、浏览器兼容、Redux、JavaScript、Axios、响应式布局、Vite、Node.js、ES6",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0815",
+            "job_title": "应届生-前端开发工程师",
+            "job_category": "前端开发",
+            "city": "北京",
+            "skills": "Vite、Flutter、Angular、Element UI、Pinia、Jest、JavaScript、CSS3",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0224",
+            "job_title": "H5开发工程师（校招）",
+            "job_category": "前端开发",
+            "city": "北京",
+            "skills": "前端工程化、Vue 3、Vuex、Node.js、Git、JavaScript、Jest",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          },
+          {
+            "job_id": "JOB_0291",
+            "job_title": "前端实习生（可转正）",
+            "job_category": "前端开发",
+            "city": "北京",
+            "skills": "Ant Design、Vue.js、Redux、Jest、性能优化、微信小程序、Angular",
+            "matched_keywords": [
+              "JavaScript"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "深圳 Java Spring Boot 后端岗位需要哪些技能？",
+        "matched_count": 7,
+        "fallback": false,
+        "target_city": "深圳",
+        "matches": [
+          {
+            "job_id": "JOB_0053",
+            "job_title": "Java后端开发（实习转正）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+            "matched_keywords": [
+              "Spring Boot",
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0622",
+            "job_title": "后端开发工程师（分布式系统方向）（校招）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "高并发、Maven、Java、Netty、Zookeeper、MyBatis、CI/CD、数据结构与算法、MongoDB",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0161",
+            "job_title": "Java开发工程师（管培生）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Maven、Zookeeper、单元测试、MySQL、Netty、MongoDB、Redis、Tomcat、Spring Cloud、Java",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_0228",
+            "job_title": "数据仓库开发工程师（应届生）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "HBase、Hadoop、DolphinScheduler、Java、MapReduce、ETL、Spark调优",
+            "matched_keywords": [
+              "Java"
+            ]
+          },
+          {
+            "job_id": "JOB_1221",
+            "job_title": "测试开发工程师（AI测试方向）（校招）",
+            "job_category": null,
+            "city": "深圳",
+            "skills": "Robotframework、缺陷管理、Java、Git、Shell、Fiddler、性能测试、禅道、黑盒测试",
+            "matched_keywords": [
+              "Java"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "深圳 Java Spring Boot 后端岗位需要哪些技能？",
+        "matched_count": 1,
+        "fallback": false,
+        "target_city": "深圳",
+        "matches": [
+          {
+            "job_id": "JOB_0053",
+            "job_title": "Java后端开发（实习转正）",
+            "job_category": "后端开发",
+            "city": "深圳",
+            "skills": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+            "matched_keywords": [
+              "Spring Boot",
+              "Java"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "before": {
+        "question": "北京 Python Kafka 数据分析岗位需要哪些技能？",
+        "matched_count": 62,
+        "fallback": false,
+        "target_city": "北京",
+        "matches": [
+          {
+            "job_id": "JOB_0566",
+            "job_title": "Hadoop开发工程师（应届）",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Doris、数据质量、Hive、Java、Python、维度建模、Airflow、Kafka",
+            "matched_keywords": [
+              "Python",
+              "Kafka"
+            ]
+          },
+          {
+            "job_id": "JOB_0081",
+            "job_title": "文案实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "脚本撰写、热点追踪、数据分析、新媒体矩阵、B站、社群运营、评论区运营、留存率、转化率、SEO",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0134",
+            "job_title": "供应链实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "Excel、仓储管理、合同管理、承运商管理、金蝶、数据分析、S&OP、询价议价、报关报检",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0154",
+            "job_title": "公关实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "公关传播、Excel、新闻稿撰写、数据分析、信息流广告、达人营销",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          },
+          {
+            "job_id": "JOB_0165",
+            "job_title": "广告投放实习生",
+            "job_category": null,
+            "city": "北京",
+            "skills": "文案撰写、SEM、数据分析、SEO、整合营销、百度推广、信息流广告、CRM",
+            "matched_keywords": [
+              "数据分析"
+            ]
+          }
+        ]
+      },
+      "after": {
+        "question": "北京 Python Kafka 数据分析岗位需要哪些技能？",
+        "matched_count": 0,
+        "fallback": true,
+        "target_city": "北京",
+        "matches": []
+      }
+    },
+    {
+      "before": {
+        "question": "asdfghjkl",
+        "matched_count": 0,
+        "fallback": false,
+        "target_city": null,
+        "matches": []
+      },
+      "after": {
+        "question": "asdfghjkl",
+        "matched_count": 0,
+        "fallback": false,
+        "target_city": null,
+        "matches": []
+      }
+    }
+  ]
+}

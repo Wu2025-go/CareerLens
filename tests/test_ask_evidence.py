@@ -57,3 +57,53 @@ class AskEvidenceTests(unittest.TestCase):
         with self.assertRaises(HTTPException) as error:
             ask_question(AskRequest(question='   '))
         self.assertEqual(error.exception.status_code, 400)
+
+    def mixed_rows(self):
+        return [
+            {**self.rows[0], 'job_id': 'ANALYST', 'job_title': '业务分析实习生',
+             'job_category': '数据分析', 'skills': 'Python、SQL、Tableau',
+             'job_description': '维护业务指标并完成数据提取。'},
+            {**self.rows[1], 'job_id': 'COPYWRITER', 'job_title': '文案实习生',
+             'job_category': '市场营销', 'skills': '数据分析、SEO',
+             'job_description': '整理运营数据并撰写文案。'},
+            {**self.rows[2], 'job_id': 'DEVELOPER', 'job_title': 'Python 后端开发实习生',
+             'job_category': '后端开发', 'skills': 'Python、Redis',
+             'job_description': '开发和维护业务接口。'},
+        ]
+
+    def test_multiple_requested_keywords_must_match_the_same_job(self):
+        rows = self.mixed_rows()
+        rows[0]['job_title'] = '数据分析实习生'
+        with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
+            result = ask_question(AskRequest(question='广州 Python 数据分析岗位需要哪些技能？'))
+        self.assertEqual(result['matched_count'], 1)
+        self.assertEqual([m['job_id'] for m in result['matches']], ['ANALYST'])
+        self.assertNotIn('SEO', [s['name'] for s in result['top_skills']])
+
+    def test_job_category_can_match_a_role_absent_from_title_and_description(self):
+        rows = self.mixed_rows()
+        with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
+            result = ask_question(AskRequest(question='广州 Python 数据分析岗位需要哪些技能？'))
+        self.assertEqual(result['matched_count'], 1)
+        self.assertEqual(result['matches'][0]['job_id'], 'ANALYST')
+        self.assertEqual(result['matches'][0]['job_category'], '数据分析')
+        self.assertEqual(result['matches'][0]['job_description'], rows[0]['job_description'])
+
+    def test_other_city_fallback_preserves_all_requested_keywords(self):
+        rows = self.mixed_rows()
+        rows[0]['city'] = '上海'
+        with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
+            result = ask_question(AskRequest(question='广州 Python 数据分析岗位需要哪些技能？'))
+        self.assertTrue(result['fallback'])
+        self.assertEqual(result['matched_count'], 1)
+        self.assertEqual([m['job_id'] for m in result['matches']], ['ANALYST'])
+        self.assertEqual(result['matches'][0]['city'], '上海')
+
+    def test_partial_matches_do_not_become_evidence_or_global_statistics(self):
+        rows = self.mixed_rows()[1:]
+        with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
+            result = ask_question(AskRequest(question='广州 Python 数据分析岗位需要哪些技能？'))
+        self.assertEqual(result['matched_count'], 0)
+        self.assertEqual(result['matches'], [])
+        self.assertEqual(result['top_skills'], [])
+        self.assertEqual(result['ai_status'], 'no_matches')

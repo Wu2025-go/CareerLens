@@ -108,7 +108,7 @@ def build_evidence(matches, top_k):
     evidence = []
     seen = set()
     limits = {
-        "job_title": 180, "company_name": 120, "city": 40,
+        "job_title": 180, "job_category": 80, "company_name": 120, "city": 40,
         "education": 80, "experience": 80, "skills": 600,
         "job_description": 1200, "source": 120, "publish_date": 40,
     }

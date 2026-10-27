@@ -313,6 +313,42 @@ class SettingsTests(unittest.TestCase):
 
 
 class RagRouteTests(unittest.TestCase):
+    def test_beijing_python_analytics_only_sends_matching_records_to_model(self):
+        from fastapi.testclient import TestClient
+        from backend.main import app
+        sent = []
+
+        def model(request):
+            context = json.loads(json.loads(request.content)['messages'][1]['content'])
+            sent.append(context['evidence'])
+            first = context['evidence'][0]
+            return httpx.Response(200, json=completion({
+                'evidence_insufficient': False,
+                'claims': [{'text': '本次样本的数据分析岗位涉及 Python 和业务指标处理。',
+                            'citations': [{'job_id': first['job_id'], 'quote': 'Python'}]}],
+            }))
+
+        model_client = httpx.AsyncClient(transport=httpx.MockTransport(model))
+        with patch.object(rag, 'read_settings', return_value=rag.Settings(api_key=TEST_KEY)), \
+             patch.object(rag, '_budget', rag.CallBudget()), \
+             patch.object(rag.httpx, 'AsyncClient', return_value=model_client):
+            with TestClient(app) as client:
+                response = client.post('/api/ask', json={
+                    'question': '北京 Python 数据分析岗位需要哪些技能？',
+                })
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(result['answer_mode'], 'rag')
+        self.assertEqual(result['matched_count'], 3)
+        self.assertFalse(result['fallback'])
+        self.assertEqual(len(sent), 1)
+        self.assertEqual({m['job_id'] for m in sent[0]}, {'JOB_0582', 'JOB_1351', 'JOB_1962'})
+        for record in sent[0]:
+            self.assertEqual(record['city'], '北京')
+            self.assertEqual(record['job_category'], '数据分析')
+            self.assertIn('Python', record['skills'])
+        self.assertTrue(result['reference_integrity_checked'])
+
     def test_api_route_runs_retrieval_then_model_and_returns_its_evidence(self):
         from fastapi.testclient import TestClient
         from backend.main import app
