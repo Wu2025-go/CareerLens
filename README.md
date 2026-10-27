@@ -1,11 +1,11 @@
 
 # CareerLens 职见
-**已有线上服务：** <https://careerlens-e1fa.onrender.com>（本次RAG修改仍需发布，线上以实际提交为准）
+**线上服务：** <https://careerlens-e1fa.onrender.com>（2026-10-26已部署并通过真实模型链路验收，应用提交`6fb9c9c`）
 > 面向大学生的就业岗位数据智能分析与技能画像平台
 
 本地整合版（2026-10-26）的运行和交接说明见 [START_HERE.md](START_HERE.md)。直接在项目根目录执行 `python scripts/start.py`，完成后打开 <http://127.0.0.1:8000>。
 
-本版增加了“岗位关键词检索 → DeepSeek API生成 → 引用编号与逐字摘录校验”的问答链路。模型成功且引用校验通过时，接口返回 `answer_mode=rag`；未配置、无证据或调用失败时明确显示规则检索结果。代码已做模拟接口检查，真实DeepSeek调用仍需在本机配置密钥后验收。操作见 [docs/RAG_SETUP.md](docs/RAG_SETUP.md)，技术底稿见 [docs/TECHNICAL_DRAFT.md](docs/TECHNICAL_DRAFT.md)。
+本版实现了“岗位关键词检索 → DeepSeek API生成 → 引用编号与逐字摘录校验”的问答链路。模型成功且引用校验通过时，接口返回 `answer_mode=rag`；未配置、无证据或调用失败时明确显示规则检索结果。本机真实调用、GitHub CI和Render线上验收已完成，线上浏览器16组检查通过；真实调用记录用于验证链路，尚不代表模型准确率评测。配置见 [docs/RAG_SETUP.md](docs/RAG_SETUP.md)，验证记录见 [docs/RAG_VERIFICATION.md](docs/RAG_VERIFICATION.md)。
 
 CareerLens（职见）是一个基于招聘岗位数据构建的就业分析与职业辅助平台。
 
@@ -552,7 +552,7 @@ CareerLens 后续计划逐步完善以下能力：
 
 ### AI 能力
 
-- 完成真实模型调用验收，记录问答质量、Token用量与耗时
+- 扩充多城市、多技术标注问题集，记录问答质量、失败样例、Token用量与耗时
 - 根据问题集评测结果比较语义检索或混合检索
 - 提升复杂就业问题的理解能力
 - 提供更细致的职业技能分析

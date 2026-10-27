@@ -1,0 +1,45 @@
+{
+  "question": "深圳 Java 后端开发岗位需要哪些技能？",
+  "answer_mode": "rag",
+  "ai_status": "generated",
+  "model": "deepseek-flash",
+  "model_reported": "deepseek-flash",
+  "matched_count": 7,
+  "evidence_count": 5,
+  "reference_integrity_checked": true,
+  "llm_usage": {
+    "prompt_tokens": 1421,
+    "completion_tokens": 396,
+    "total_tokens": 1817
+  },
+  "client_elapsed_ms": 11368,
+  "model_latency_ms": 2927,
+  "answer": "根据本次展示的岗位样本：\n深圳Java后端岗位普遍把Java列为核心技能，并搭配Maven、MyBatis等构建与持久层工具。 [JOB_0622] [JOB_0161]\nSpring生态与微服务组件出现较多，包括Spring Boot、Spring Cloud，以及Redis、Zookeeper等中间件。 [JOB_0053] [JOB_0161]\n部分岗位强调网络编程与高并发能力，Netty、高并发、数据结构与算法被明确写入技能要求。 [JOB_0622]\n数据库与部署运维技能也有涉及，如MySQL调优、Docker、Shell及CI/CD、灰度发布配合。 [JOB_0053] [JOB_0622]",
+  "citations": [
+    {
+      "job_id": "JOB_0622",
+      "quote": "高并发、Maven、Java、Netty、Zookeeper、MyBatis、CI/CD、数据结构与算法、MongoDB",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0161",
+      "quote": "Maven、Zookeeper、单元测试、MySQL、Netty、MongoDB、Redis、Tomcat、Spring Cloud、Java",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0053",
+      "quote": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0161",
+      "quote": "Redis、Tomcat、Spring Cloud、Java",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0622",
+      "quote": "配合运维完成服务部署、灰度发布与上线后的观察",
+      "field": "job_description"
+    }
+  ]
+}

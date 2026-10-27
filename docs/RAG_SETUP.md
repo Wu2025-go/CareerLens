@@ -66,7 +66,7 @@ python scripts/check_ai.py --output docs/qa_live_result.json
 
 ## 发布到Render
 
-Build和Start保持原命令。在Environment中填写`DEEPSEEK_API_KEY`，设置`CAREERLENS_ANSWER_MODE=auto`、`LLM_MODEL=deepseek-flash`、`LLM_BASE_URL=https://api.deepseek.com`。真实`.env`不提交到GitHub。发布后确认提交编号，分别检查问答、引用、失败回退和页面刷新，再录制视频。
+Build和Start保持原命令。在Environment中填写`DEEPSEEK_API_KEY`并选择Save and deploy；`CAREERLENS_ANSWER_MODE=auto`、`LLM_MODEL=deepseek-flash`、`LLM_BASE_URL=https://api.deepseek.com`已有代码默认值，未覆盖时不必重复填写。真实`.env`不提交到GitHub。发布后确认提交编号，检查问答、引用和页面刷新，再录制视频。
 
 ## 官方接口参考
 

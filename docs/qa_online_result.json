@@ -1,0 +1,64 @@
+{
+  "tested_at": "2026-10-26T15:52:41.823Z",
+  "source_url": "https://careerlens-e1fa.onrender.com",
+  "source_commit": "6fb9c9c03b5d40014c4b794b39c00b912e87ab53",
+  "question": "深圳 Java 后端开发岗位需要哪些技能？",
+  "answer_mode": "rag",
+  "ai_status": "generated",
+  "model": "deepseek-flash",
+  "model_reported": "deepseek-flash",
+  "matched_count": 7,
+  "evidence_count": 5,
+  "reference_integrity_checked": true,
+  "model_request_attempted": true,
+  "llm_usage": {
+    "prompt_tokens": 1421,
+    "completion_tokens": 328,
+    "total_tokens": 1749
+  },
+  "client_elapsed_ms": 2806,
+  "model_latency_ms": 2343,
+  "answer": "根据本次展示的岗位样本：\n深圳Java后端岗位普遍要求掌握Java语言，并熟悉Maven、MyBatis等构建与持久层工具。 [JOB_0622] [JOB_0053]\nSpring Cloud、Spring Boot等微服务框架在样本中多次出现，是后端开发的重要技能方向。 [JOB_0053] [JOB_0161]\n缓存与中间件能力受关注，包括Redis、Zookeeper、Netty及消息队列的接入调优。 [JOB_0161] [JOB_0622]\n数据库方面涉及MySQL、MongoDB，部分岗位还要求MySQL调优能力。 [JOB_0053] [JOB_0161]",
+  "citations": [
+    {
+      "job_id": "JOB_0622",
+      "quote": "高并发、Maven、Java、Netty、Zookeeper、MyBatis、CI/CD、数据结构与算法、MongoDB",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0053",
+      "quote": "Docker、Spring Boot、Shell、单元测试、RESTful API、MySQL调优、Spring Cloud、MyBatis",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0053",
+      "quote": "Spring Cloud",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0161",
+      "quote": "Spring Cloud",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0161",
+      "quote": "协助完成缓存、消息队列等中间件的接入与配置调优",
+      "field": "job_description"
+    },
+    {
+      "job_id": "JOB_0622",
+      "quote": "Netty、Zookeeper",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0053",
+      "quote": "MySQL调优",
+      "field": "skills"
+    },
+    {
+      "job_id": "JOB_0161",
+      "quote": "MySQL、Netty、MongoDB",
+      "field": "skills"
+    }
+  ]
+}
