@@ -5,7 +5,7 @@ import { pageFromPath } from '../src/utils/navigation.js'
 test('deep links select the intended page', () => {
   for (const [path, page] of Object.entries({
     '/': 'dashboard', '/ask': 'ask', '/skills': 'skills',
-    '/recommend': 'recommend', '/trends': 'trends', '/history': 'history'
+    '/recommend': 'recommend', '/trends': 'trends', '/history': 'history', '/login': 'login'
   })) assert.equal(pageFromPath(path), page)
 })
 

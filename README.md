@@ -1,9 +1,11 @@
 
 # CareerLens 职见
-**线上服务：** <https://careerlens-e1fa.onrender.com>（2026-10-26已部署并通过真实模型链路验收，应用提交`6fb9c9c`）
+**线上服务：** <https://careerlens-e1fa.onrender.com>
 > 面向大学生的就业岗位数据智能分析与技能画像平台
 
 本地整合版（2026-10-26）的运行和交接说明见 [START_HERE.md](START_HERE.md)。直接在项目根目录执行 `python scripts/start.py`，完成后打开 <http://127.0.0.1:8000>。
+
+2026-10-27 账号更新新增了真实注册、密码验证、服务端会话与退出登录，入口为 `/login`。本地使用 SQLite；Render 上线前需要配置 Postgres `DATABASE_URL`。配置步骤与本次验收边界见 [docs/AUTH_SETUP.md](docs/AUTH_SETUP.md)。原有 RAG 线上验收记录仍按其实际日期和版本单独保留，不能当作本次账号功能的线上验收。
 
 本版实现了“岗位关键词检索 → DeepSeek API生成 → 引用编号与逐字摘录校验”的问答链路。模型成功且引用校验通过时，接口返回 `answer_mode=rag`；未配置、无证据或调用失败时明确显示规则检索结果。本机真实调用、GitHub CI和Render线上验收已完成，线上浏览器16组检查通过；真实调用记录用于验证链路，尚不代表模型准确率评测。配置见 [docs/RAG_SETUP.md](docs/RAG_SETUP.md)，验证记录见 [docs/RAG_VERIFICATION.md](docs/RAG_VERIFICATION.md)。
 
@@ -188,7 +190,15 @@ CareerLens 致力于帮助大学生解决四个核心问题：
 - 删除单条记录
 - 清空全部历史记录
 
-当前历史记录使用浏览器 LocalStorage 保存，最多保留 100 条。记录仅存在于当前浏览器，换设备不能自动同步；清除网站数据后无法恢复。
+当前历史记录使用浏览器 LocalStorage 保存，按当前账号或访客身份分开，各保留最多 100 条。记录仅存在于当前浏览器，换设备不能自动同步；清除网站数据后无法恢复。账号和会话本身保存在后端数据库，使用记录暂未迁入后端。
+
+### 2.7 账号注册与登录
+
+- 账号为 6 至 20 位字母或数字，不区分大小写；密码为 8 至 128 个字符。
+- 注册后使用密码登录，页面刷新时由后端检查会话，退出时撤销服务端会话。
+- 密码使用随机盐和 PBKDF2-HMAC-SHA256 哈希保存；会话令牌由 HttpOnly Cookie 管理。
+- 保留访客入口，六个就业分析功能可以直接浏览；账号服务故障时显示明确状态。
+- 本地账号库由程序自动创建；Render 需要单独配置账号数据库，不能依赖临时磁盘。
 
 ---
 
@@ -359,7 +369,7 @@ flowchart TD
   B --> H[浏览器历史记录]
 ```
 
-历史记录目前由前端使用 LocalStorage 保存。
+历史记录目前由前端使用 LocalStorage 保存，并按账号或访客区分；账号、密码哈希与会话由后端管理，本地使用 SQLite，Render 使用 Postgres。
 
 ---
 
@@ -453,7 +463,7 @@ pip install -r requirements.txt && npm --prefix frontend ci && npm --prefix fron
 python -m uvicorn backend.web:app --host 0.0.0.0 --port $PORT
 ```
 
-SPA 静态托管与导航回退位于 `backend/web.py`。`scripts/start.py` 用于本地安装、构建和启动。前端支持直接访问 `/ask`、`/skills`、`/recommend`、`/trends`、`/history` 及刷新后保持对应页面。
+SPA 静态托管与导航回退位于 `backend/web.py`。`scripts/start.py` 用于本地安装、构建和启动。前端支持直接访问 `/ask`、`/skills`、`/recommend`、`/trends`、`/history`、`/login` 及刷新后保持对应页面。账号部署配置见 [docs/AUTH_SETUP.md](docs/AUTH_SETUP.md)。
 
 ### 8.4 自动化检查
 
@@ -540,7 +550,7 @@ CareerLens 后续计划逐步完善以下能力：
 - 优化数据清洗流程
 - 完善数据来源和更新时间标记
 - 增强岗位技能标准化处理
-- 接入数据库进行持久化存储
+- 将使用记录迁入后端数据库，并实现跨设备同步
 
 ### 算法层
 
@@ -559,7 +569,7 @@ CareerLens 后续计划逐步完善以下能力：
 
 ### 产品层
 
-- 完善用户登录和个人中心
+- 补充个人资料管理、密码找回与账号生命周期管理
 - 增加用户画像管理
 - 优化移动端适配
 - 提升图表交互体验

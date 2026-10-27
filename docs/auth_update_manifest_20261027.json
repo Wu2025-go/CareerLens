@@ -1,0 +1,115 @@
+{
+  "base_commit": "35caf1c330ed5668d576aec822854fb5e6a85e32",
+  "base_description": "Latest user-pushed Logo commit, checked before packaging",
+  "entries_exclude_manifest_itself": true,
+  "files": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "bytes": 3717,
+      "before_sha256": "066227837fe3936095b98ede5e4c6b7fb8a275b289a151ffcebf4195822c280f",
+      "after_sha256": "f15a8173450572f5655ff9b1572fde6b3bb23fd80e86c6ebfa8c6bcdf07a74b1"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 504,
+      "before_sha256": "870f02fa4d2f55248101affe8ec84c7eb3862ac2fa7b1223ad83c9f8d93803d0",
+      "after_sha256": "f1f6a9bd304ffe80f2748b219db5c8171d830a3d4d66847596998790a414a8bd"
+    },
+    {
+      "path": ".env.example",
+      "bytes": 818,
+      "before_sha256": "cd790d86989dcd5b0a57581790df86526b14748c25e7dfd52fa1896eea7ba8f2",
+      "after_sha256": "dcd4a88c92d3c0b1ee9621c4a7656ef2fe7d238676fe65a2bc6ca656cada300c"
+    },
+    {
+      "path": "README.md",
+      "bytes": 17639,
+      "before_sha256": "8c36e2bbf8fe0a452f3ef8fec1be6ba29ad989bfdb1886bb80369ad1df129409",
+      "after_sha256": "418be4f30201f352004cd163e657aa66e1d593a17a80c80588a6af1316bc63c7"
+    },
+    {
+      "path": "requirements.txt",
+      "bytes": 98,
+      "before_sha256": "d76eb9fc25a05f36d4dbd7518dd1727cafaab449cec66a9e7cf931f7b7f2fde9",
+      "after_sha256": "eee8eb4dd3386369e87166f98fccf2af01946406637d6900f4e9751742bc2b43"
+    },
+    {
+      "path": "backend/main.py",
+      "bytes": 44355,
+      "before_sha256": "959e19d7386783b77c2f97890b9dd314d2bc343876585d4f6b51005902dfe5a3",
+      "after_sha256": "28b086230a3501df103137b64b1d2c5393e5b1b851183b7d22c39313cb510a14"
+    },
+    {
+      "path": "backend/auth.py",
+      "bytes": 15698,
+      "before_sha256": null,
+      "after_sha256": "61198e17438d6701449e84e305c56172f481f1eea957b2532eab26fb3ff68591"
+    },
+    {
+      "path": "frontend/src/App.vue",
+      "bytes": 28278,
+      "before_sha256": "b870452e9e7a355385ae08760987c83d57c711e2b8c1bf9c05480a7f9e31810b",
+      "after_sha256": "20b2eca11a7a1c7d27b7ee619e6b77f18389e59dc91107632828c41b96dcffaf"
+    },
+    {
+      "path": "frontend/src/components/LoginPage.vue",
+      "bytes": 12133,
+      "before_sha256": null,
+      "after_sha256": "95703d4a60b91ddb9d47f2d28ae54f3cd30ccb9261171d977a3c3831455417eb"
+    },
+    {
+      "path": "frontend/src/components/HistoryPage.vue",
+      "bytes": 20115,
+      "before_sha256": "6c3fa55ce03ba0fad47ca6dd1c170188bb7fe36f3a91ca5231858e8b78a317a3",
+      "after_sha256": "5fdbbc5d1877dd196ab3d2272ceaacf17c3c7d44984eecbba30f288ba57d8b92"
+    },
+    {
+      "path": "frontend/src/utils/auth.js",
+      "bytes": 2281,
+      "before_sha256": null,
+      "after_sha256": "9d28806be8098e28a7c7f545ad184d3340bbf9c673a5cfeb7aa1a6942701ce22"
+    },
+    {
+      "path": "frontend/src/utils/history.js",
+      "bytes": 4583,
+      "before_sha256": "d47882ab295b6bb879cf86741a1194c98242b03813ab6c1381b8abdd0ee23812",
+      "after_sha256": "4274ca97f9462353fbab315f15cc9f3a8e5b1234516fbd5f420c1ef0b8f1b7f2"
+    },
+    {
+      "path": "frontend/src/utils/navigation.js",
+      "bytes": 1457,
+      "before_sha256": "5a7d4b7a7fd0927ffda4bb9163e11abab1443386aa6923d1015fe50c1c9541db",
+      "after_sha256": "5dc591476c7ae3d337b5b0ad68a961fb1e3573e7a72e21b4056ef18e17bc4a1a"
+    },
+    {
+      "path": "frontend/tests/navigation.test.js",
+      "bytes": 893,
+      "before_sha256": "a7becd1b5936dee0ad432166dc1490749e32cf60282c9ff14d0e86ffaf98b496",
+      "after_sha256": "d46eb5ceff6afc93875772623047299576253caecf40df55866e92387ace2dfa"
+    },
+    {
+      "path": "frontend/tests/history.test.js",
+      "bytes": 2169,
+      "before_sha256": null,
+      "after_sha256": "698bda0a8d50731f8e616091794b0f84d22729e58b6e2186c9d353b858b241df"
+    },
+    {
+      "path": "tests/test_auth.py",
+      "bytes": 12679,
+      "before_sha256": null,
+      "after_sha256": "76fa627b174e008b9055f3ba8da572b45fa58ec12554edd9f21e8b496e2eaf70"
+    },
+    {
+      "path": "docs/AUTH_SETUP.md",
+      "bytes": 5531,
+      "before_sha256": null,
+      "after_sha256": "5a817a8bb6519d8d4fa1376c13f3f04805173e07d33d3564854fd5e92fbd5fa4"
+    },
+    {
+      "path": "docs/qa_auth_20261027.json",
+      "bytes": 2896,
+      "before_sha256": null,
+      "after_sha256": "f5d7011e3a1ad2a78535f6e2138299b210737e059ce7bfa8bdfafc707cb53caf"
+    }
+  ]
+}

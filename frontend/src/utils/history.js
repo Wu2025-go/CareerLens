@@ -5,6 +5,17 @@
 
 const STORAGE_KEY = 'careerlens_history_v1'
 
+let historyUser = null
+const storageKey = () => historyUser ? `${STORAGE_KEY}_user_${historyUser}` : STORAGE_KEY
+
+// 只区分当前浏览器中的记录，不作为服务端权限或跨端同步。
+export const setHistoryUser = (userId) => {
+  const next = typeof userId === 'string' && /^[a-f0-9-]{36}$/i.test(userId) ? userId : null
+  if (next === historyUser) return
+  historyUser = next
+  window.dispatchEvent(new CustomEvent('careerlens-history-change'))
+}
+
 const MAX_HISTORY_COUNT = 100
 
 
@@ -48,7 +59,7 @@ const createId = () => {
 export const getHistoryRecords = () => {
   const raw =
     localStorage.getItem(
-      STORAGE_KEY
+      storageKey()
     )
 
   if (!raw) {
@@ -125,7 +136,7 @@ export const saveHistoryRecord = ({
     )
 
   localStorage.setItem(
-    STORAGE_KEY,
+    storageKey(),
     JSON.stringify(
       limitedRecords
     )
@@ -157,7 +168,7 @@ export const deleteHistoryRecord = (
       )
 
   localStorage.setItem(
-    STORAGE_KEY,
+    storageKey(),
     JSON.stringify(records)
   )
 
@@ -175,7 +186,7 @@ export const deleteHistoryRecord = (
 
 export const clearHistoryRecords = () => {
   localStorage.removeItem(
-    STORAGE_KEY
+    storageKey()
   )
 
   window.dispatchEvent(

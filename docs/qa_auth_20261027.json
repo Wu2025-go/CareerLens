@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-27",
+  "base_commit": "35caf1c330ed5668d576aec822854fb5e6a85e32",
+  "scope": "Local authentication integration; user application, GitHub CI and Render account-database setup pending",
+  "backend": {
+    "total": 103,
+    "passed": 102,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "real_model_calls": 0,
+    "postgres_executed": false,
+    "skipped_case": "PostgresAuthTests.test_real_postgres_registration_session_and_revocation; executed by CI when AUTH_TEST_DATABASE_URL is set"
+  },
+  "frontend": {
+    "passed": 6,
+    "failed": 0,
+    "production_build": "passed",
+    "vite_version": "6.4.4",
+    "dependency_setup": "Reused installed dependencies after all 88 package-lock versions and integrity values matched; offline npm ci lacked mirror-cache entries"
+  },
+  "browser": {
+    "success": true,
+    "check_count": 17,
+    "checks": [
+      "public homepage and supplied logo load",
+      "guest question saves a guest history record without a model call",
+      "login screen follows supplied design and uses correct live statistic labels",
+      "registration rejects nonmatching confirmation before account creation",
+      "real server registration returns user to login screen",
+      "wrong password displays server error without entering the platform",
+      "valid password signs in and exposes no readable session cookie",
+      "refresh restores the server-side session",
+      "account A starts with separate browser history",
+      "logout returns to guest history and hides account A history",
+      "account B does not inherit guest or account A browser history",
+      "signing back into account A restores its own local record",
+      "expired server session returns to guest on refresh",
+      "all seven routes support direct navigation and refresh",
+      "390px login and registration layouts have no horizontal overflow",
+      "unavailable account service still offers a working guest path",
+      "no uncaught JavaScript errors"
+    ],
+    "javascript_errors": [],
+    "real_model_calls": 0,
+    "storage": "SQLite QA database; account-service unavailable branch mocked once"
+  },
+  "visual_review": {
+    "desktop": "1440x1000 login and signed-in homepage checked",
+    "mobile": "390x844 viewport; full login and registration screenshots checked; no horizontal overflow"
+  },
+  "real_llm_provider_calls": 0,
+  "database": {
+    "sqlite": "Registration, password verification, restart-style store recreation, session recovery, expiry and revocation tested",
+    "postgres": "Driver installed; real Postgres integration not run locally; dedicated CI service and test provided",
+    "render_auth": "Not yet deployed or configured; existing public service is the baseline version"
+  },
+  "sensitive_data": "No real API keys, database URLs, user account database, cookie values or browser storage state included in update package"
+}

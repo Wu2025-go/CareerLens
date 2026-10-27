@@ -10,6 +10,9 @@ import {
 } from 'vue'
 
 import { usePageNavigation } from './utils/navigation'
+import { authState, logoutAccount, restoreSession } from './utils/auth.js'
+
+const LoginPage = defineAsyncComponent(() => import('./components/LoginPage.vue'))
 
 const AskPage = defineAsyncComponent(() => import('./components/AskPage.vue'))
 const SkillTestPage = defineAsyncComponent(() => import('./components/SkillTestPage.vue'))
@@ -23,6 +26,26 @@ const HistoryPage = defineAsyncComponent(() => import('./components/HistoryPage.
 ========================================================= */
 
 const { activePage, setPage, navigate } = usePageNavigation()
+
+const logoutBusy = ref(false)
+const accountError = ref('')
+const signOut = async () => {
+  if (logoutBusy.value) return
+  logoutBusy.value = true
+  accountError.value = ''
+  try {
+    await logoutAccount()
+    setPage('dashboard')
+  } catch (error) {
+    accountError.value = error.message
+  } finally {
+    logoutBusy.value = false
+  }
+}
+
+watch(() => authState.user?.id, (id) => {
+  if (id && activePage.value === 'login') setPage('dashboard')
+})
 
 
 /* =========================================================
@@ -343,6 +366,7 @@ watch(
 
 onMounted(() => {
   loadDashboard()
+  restoreSession()
 
   window.addEventListener(
     'resize',
@@ -363,7 +387,8 @@ onBeforeUnmount(() => {
 
 
 <template>
-  <div class="app">
+  <LoginPage v-if="activePage === 'login'" @authenticated="setPage('dashboard')" @guest="setPage('dashboard')" />
+  <div v-else class="app">
 
     <!-- ===================================================
          左侧导航栏
@@ -487,6 +512,19 @@ onBeforeUnmount(() => {
         </a>
 
       </nav>
+
+      <div class="account-panel" aria-label="账号状态">
+        <p v-if="!authState.ready" class="account-note">正在确认账号…</p>
+        <template v-else-if="authState.user">
+          <span class="account-name">已登录 · {{ authState.user.username }}</span>
+          <button class="account-button" type="button" :disabled="logoutBusy" @click="signOut">{{ logoutBusy ? '正在退出…' : '退出登录' }}</button>
+        </template>
+        <template v-else>
+          <span class="account-name">当前为访客</span>
+          <a href="/login" class="account-button" @click="navigate($event, 'login')">登录 / 注册</a>
+        </template>
+        <p v-if="accountError || authState.error" class="account-note" role="alert">{{ accountError || authState.error }}</p>
+      </div>
 
     </aside>
 
@@ -854,9 +892,11 @@ onBeforeUnmount(() => {
 
       <HistoryPage
         v-else-if="
-          activePage === 'history'
+          activePage === 'history' && authState.ready
         "
+        :key="authState.user?.id || 'guest'"
       />
+      <p v-else-if="activePage === 'history'" role="status">正在确认账号并加载记录…</p>
 
     </main>
 
@@ -865,6 +905,13 @@ onBeforeUnmount(() => {
 
 
 <style scoped>
+
+.account-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-top: 28px; padding: 20px 10px 0; border-top: 1px solid rgba(255,255,255,.16); }
+.account-name { max-width: 100%; overflow-wrap: anywhere; color: #e0e7ff; font-size: 13px; line-height: 1.6; }
+.account-button { display: inline-flex; align-items: center; padding: 8px 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,.3); background: rgba(255,255,255,.12); color: white; font: inherit; font-size: 13px; text-decoration: none; }
+.account-button:disabled { opacity: .6; cursor: wait; }
+.account-button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+.account-note { color: #e0e7ff; margin: 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
 
 * {
   box-sizing: border-box;

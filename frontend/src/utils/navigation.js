@@ -6,7 +6,8 @@ export const PAGE_PATHS = Object.freeze({
   skills: '/skills',
   recommend: '/recommend',
   trends: '/trends',
-  history: '/history'
+  history: '/history',
+  login: '/login'
 })
 
 const PATH_PAGES = Object.fromEntries(

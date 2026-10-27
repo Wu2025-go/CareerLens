@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from backend.rag import augment_answer
+from backend.auth import install_auth
 
 
 # =========================================================
@@ -44,6 +45,8 @@ app = FastAPI(
     description="CareerLens 职见后端服务",
     version="0.6.1"
 )
+
+install_auth(app)
 
 
 # =========================================================
