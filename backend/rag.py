@@ -1,9 +1,3 @@
-"""在现有岗位检索之后调用模型，校验引用并保留明确的规则回退。
-
-检索器使用项目现有的关键词排序；本模块不声称实现了语义向量检索。
-模型输出的编号和摘录可机械核对，结论是否得到证据支持仍需人工判断。
-"""
-
 from collections import deque
 import asyncio
 from dataclasses import dataclass, field

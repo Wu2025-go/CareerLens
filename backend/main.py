@@ -13,10 +13,6 @@ from backend.rag import augment_answer
 from backend.auth import install_auth
 
 
-# =========================================================
-# 请求模型
-# =========================================================
-
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
 
@@ -36,9 +32,6 @@ class JobRecommendRequest(BaseModel):
     education: str | None = None
 
 
-# =========================================================
-# FastAPI 应用
-# =========================================================
 
 app = FastAPI(
     title="CareerLens API",
@@ -48,10 +41,6 @@ app = FastAPI(
 
 install_auth(app)
 
-
-# =========================================================
-# CORS
-# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,10 +56,6 @@ app.add_middleware(
 )
 
 
-# =========================================================
-# 数据文件路径
-# =========================================================
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 CSV_PATH = (
@@ -79,11 +64,6 @@ CSV_PATH = (
     / "sample"
     / "jobs_sample.csv"
 )
-
-
-# =========================================================
-# 工具函数
-# =========================================================
 
 def clean_text(value):
     if value is None:
@@ -190,10 +170,6 @@ def normalize_skills(skills):
 
     return result
 
-
-# =========================================================
-# 匹配工具：保留展示名称，仅将比较时使用的键规范化
-# =========================================================
 
 _SKILL_ALIASES = {
     "js": "javascript",
@@ -324,21 +300,12 @@ def recommendation_salary(row):
     return lower, upper
 
 
-# =========================================================
-# 根接口
-# =========================================================
-
 @app.get("/")
 def root():
     return {
         "message": "CareerLens API is running",
         "version": "0.6.1"
     }
-
-
-# =========================================================
-# 首页顶部数据
-# =========================================================
 
 @app.get("/api/overview")
 def get_overview():
@@ -384,17 +351,11 @@ def get_overview():
     }
 
 
-# =========================================================
-# Dashboard
-# =========================================================
-
 @app.get("/api/dashboard")
 def get_dashboard():
     df = load_jobs()
 
-    # -----------------------------------------------------
-    # 1. 城市岗位分布
-    # -----------------------------------------------------
+ 
 
     cities = []
 
@@ -428,9 +389,6 @@ def get_dashboard():
                 "value": percentage
             })
 
-    # -----------------------------------------------------
-    # 2. 薪资区间分布
-    # -----------------------------------------------------
 
     salary_midpoints = []
 
@@ -484,9 +442,6 @@ def get_dashboard():
         in salary_bins.items()
     ]
 
-    # -----------------------------------------------------
-    # 3. 高频技能
-    # -----------------------------------------------------
 
     skill_counter = Counter()
 
@@ -501,9 +456,6 @@ def get_dashboard():
         in skill_counter.most_common(8)
     ]
 
-    # -----------------------------------------------------
-    # 4. 岗位趋势
-    # -----------------------------------------------------
 
     months = []
     values = []
@@ -548,10 +500,6 @@ def get_dashboard():
     }
 
 
-# =========================================================
-# 岗位知识库问答（当前采用规则检索）
-# =========================================================
-
 def retrieve_question(request: AskRequest):
     question = request.question.strip()
 
@@ -564,9 +512,6 @@ def retrieve_question(request: AskRequest):
     df = load_jobs()
     question_lower = question.lower()
 
-    # -----------------------------------------------------
-    # 1. 识别城市
-    # -----------------------------------------------------
 
     target_city = None
 
@@ -585,9 +530,6 @@ def retrieve_question(request: AskRequest):
                 target_city = city
                 break
 
-    # -----------------------------------------------------
-    # 2. 技术关键词
-    # -----------------------------------------------------
 
     core_keywords = [
         "Spring Cloud",
@@ -647,9 +589,6 @@ def retrieve_question(request: AskRequest):
             "Spring"
         )
 
-    # -----------------------------------------------------
-    # 3. 岗位评分
-    # -----------------------------------------------------
 
     def score_job(row):
         job_title = clean_text(
@@ -808,9 +747,6 @@ def retrieve_question(request: AskRequest):
             "dataset": "jobs_sample.csv"
         }
 
-    # -----------------------------------------------------
-    # 4. 第一次严格检索
-    # -----------------------------------------------------
 
     if (
         target_city
@@ -839,9 +775,6 @@ def retrieve_question(request: AskRequest):
         reverse=True
     )
 
-    # -----------------------------------------------------
-    # 5. 智能降级
-    # -----------------------------------------------------
 
     fallback = False
     fallback_message = None
@@ -891,9 +824,6 @@ def retrieve_question(request: AskRequest):
                 f"扩展其他城市后仍未找到高度相关岗位。"
             )
 
-    # -----------------------------------------------------
-    # 6. 无结果
-    # -----------------------------------------------------
 
     if not results:
         return {
@@ -922,15 +852,7 @@ def retrieve_question(request: AskRequest):
                 []
         }
 
-    # -----------------------------------------------------
-    # 7. Top 5
-    # -----------------------------------------------------
-
     top_results = results[:5]
-
-    # -----------------------------------------------------
-    # 8. 高频技能
-    # -----------------------------------------------------
 
     skill_counter = Counter()
 
@@ -955,9 +877,6 @@ def retrieve_question(request: AskRequest):
         in top_skills[:5]
     )
 
-    # -----------------------------------------------------
-    # 9. 回答文本
-    # -----------------------------------------------------
 
     if fallback:
         answer = (
@@ -1016,11 +935,6 @@ def ask_question(request: AskRequest):
     retrieved = retrieve_question(request)
     return augment_answer(request.question.strip(), retrieved)
 
-
-# =========================================================
-# 技能测评
-# =========================================================
-
 @app.post("/api/skill-match")
 def skill_match(request: SkillMatchRequest):
     user_skills = normalize_skills(
@@ -1044,9 +958,6 @@ def skill_match(request: SkillMatchRequest):
     fallback = False
     fallback_message = None
 
-    # -----------------------------------------------------
-    # 1. 城市筛选
-    # -----------------------------------------------------
 
     if (
         target_city
@@ -1078,9 +989,6 @@ def skill_match(request: SkillMatchRequest):
         for skill in user_skills
     }
 
-    # -----------------------------------------------------
-    # 2. 市场技能词频
-    # -----------------------------------------------------
 
     market_skill_counter = Counter()
 
@@ -1089,9 +997,6 @@ def skill_match(request: SkillMatchRequest):
             for skill in split_skills(value):
                 market_skill_counter[skill] += 1
 
-    # -----------------------------------------------------
-    # 3. 优势技能
-    # -----------------------------------------------------
 
     strengths = []
 
@@ -1110,9 +1015,6 @@ def skill_match(request: SkillMatchRequest):
 
     strengths = strengths[:8]
 
-    # -----------------------------------------------------
-    # 4. 技能缺口
-    # -----------------------------------------------------
 
     missing_skills = []
 
@@ -1131,9 +1033,6 @@ def skill_match(request: SkillMatchRequest):
 
     missing_skills = missing_skills[:8]
 
-    # -----------------------------------------------------
-    # 5. 岗位匹配
-    # -----------------------------------------------------
 
     recommended_jobs = []
 
@@ -1238,9 +1137,6 @@ def skill_match(request: SkillMatchRequest):
         recommended_jobs[:5]
     )
 
-    # -----------------------------------------------------
-    # 6. 综合匹配分
-    # -----------------------------------------------------
 
     if top_jobs:
         overall_score = round(
@@ -1254,9 +1150,6 @@ def skill_match(request: SkillMatchRequest):
     else:
         overall_score = 0
 
-    # -----------------------------------------------------
-    # 7. 等级与结论
-    # -----------------------------------------------------
 
     if overall_score >= 80:
         level = "高度匹配"
@@ -1323,9 +1216,6 @@ def skill_match(request: SkillMatchRequest):
     }
 
 
-# =========================================================
-# 岗位推荐
-# =========================================================
 
 @app.post("/api/recommend")
 def recommend_jobs(request: JobRecommendRequest):
@@ -1496,17 +1386,12 @@ def recommend_jobs(request: JobRecommendRequest):
         "fallback_message": fallback_message,
         "recommendations": top_jobs,
     }
-# =========================================================
-# 趋势分析
-# =========================================================
+
 
 @app.get("/api/trends")
 def get_trends():
     df = load_jobs()
 
-    # =====================================================
-    # 1. 岗位发布时间趋势
-    # =====================================================
 
     monthly_trend = []
 
@@ -1541,9 +1426,6 @@ def get_trends():
                 in month_counts.items()
             ]
 
-    # =====================================================
-    # 2. 热门技能 Top 10
-    # =====================================================
 
     skill_counter = Counter()
 
@@ -1563,9 +1445,6 @@ def get_trends():
         in skill_counter.most_common(10)
     ]
 
-    # =====================================================
-    # 3. 城市岗位数量 Top 8
-    # =====================================================
 
     city_jobs = []
 
@@ -1591,9 +1470,6 @@ def get_trends():
             in city_counts.items()
         ]
 
-    # =====================================================
-    # 4. 城市平均薪资
-    # =====================================================
 
     city_salary_data = {}
 
@@ -1659,9 +1535,6 @@ def get_trends():
 
     city_salary = city_salary[:8]
 
-    # =====================================================
-    # 5. 整体统计
-    # =====================================================
 
     salary_values = []
 
@@ -1695,9 +1568,6 @@ def get_trends():
         else 0
     )
 
-    # =====================================================
-    # 6. 返回
-    # =====================================================
 
     return {
         "summary": {

@@ -1,5 +1,4 @@
 """CareerLens 前后端一体化入口：API、静态资源及浏览器导航回退。"""
-
 import mimetypes
 from pathlib import Path
 

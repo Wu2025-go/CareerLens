@@ -85,8 +85,6 @@ jobs:
                   print(log.read_text(encoding="utf-8", errors="replace"))
               raise SystemExit("Backend did not become ready within 30 seconds.")
           PY
-
-          # 同时运行接口检查和推荐规则测试，后续新增 test_*.py 也会被发现。
           python -m unittest discover -s tests -p "test_*.py" -v
 
       - name: Show backend log on failure

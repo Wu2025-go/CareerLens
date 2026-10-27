@@ -1,5 +1,3 @@
-"""账号注册与服务端会话：本地 SQLite，Render 使用 DATABASE_URL 指定的 Postgres。"""
-
 from collections import deque
 from contextlib import contextmanager
 from functools import lru_cache
@@ -75,8 +73,6 @@ def verify_password(password: str, encoded: str) -> bool:
     except (ValueError, TypeError, AttributeError):
         return False
 
-
-# 未知账号也完成一次相同工作量的验证，错误文案与密码错误一致。
 _DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
 
 
@@ -89,7 +85,6 @@ class AuthStore:
         self._schema_lock = threading.Lock()
 
     def sql(self, query):
-        # 所有 query 均为代码中的常量；用户输入只通过参数传递。
         return query.replace("?", "%s") if self.postgres else query
 
     @contextmanager
