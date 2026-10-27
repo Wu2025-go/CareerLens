@@ -373,9 +373,12 @@ onBeforeUnmount(() => {
 
       <div class="brand">
 
-        <div class="brand-logo">
-          CL
-        </div>
+        <img
+      class="brand-logo"
+      src="/career-logo.jpg"
+      alt="CareerLens 职见"
+      style="object-fit: contain; background: white;"
+/>
 
         <div class="brand-text">
 
