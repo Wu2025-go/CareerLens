@@ -26,6 +26,14 @@ const HistoryPage = defineAsyncComponent(() => import('./components/HistoryPage.
 ========================================================= */
 
 const { activePage, setPage, navigate } = usePageNavigation()
+const recommendationInput = ref(null)
+
+const openSkillRecommendations = async (input) => {
+  recommendationInput.value = input
+  setPage('recommend')
+  await nextTick()
+  window.scrollTo(0, 0)
+}
 
 const logoutBusy = ref(false)
 const accountError = ref('')
@@ -353,6 +361,7 @@ const handleResize = () => {
 watch(
   activePage,
   async (page) => {
+    if (page !== 'recommend') recommendationInput.value = null
     if (page === 'dashboard') {
       await renderTrendChart()
     }
@@ -861,6 +870,7 @@ onBeforeUnmount(() => {
         v-else-if="
           activePage === 'skills'
         "
+        @recommend-with-skills="openSkillRecommendations"
       />
 
 
@@ -872,6 +882,7 @@ onBeforeUnmount(() => {
         v-else-if="
           activePage === 'recommend'
         "
+        :assessment-input="recommendationInput"
       />
 
 

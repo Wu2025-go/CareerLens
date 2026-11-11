@@ -5,6 +5,7 @@ import {
   saveHistoryRecord
 } from '../utils/history'
 
+const emit = defineEmits(['recommend-with-skills'])
 
 /* =========================
    可选技能
@@ -58,6 +59,7 @@ const customSkill = ref('')
 const loading = ref(false)
 
 const result = ref(null)
+const completedAssessment = ref(null)
 
 const errorMessage = ref('')
 
@@ -123,6 +125,7 @@ const addCustomSkill = () => {
 const clearSkills = () => {
   selectedSkills.value = []
   result.value = null
+  completedAssessment.value = null
   errorMessage.value = ''
 }
 
@@ -242,7 +245,7 @@ const getGapSkills = (
 ========================= */
 
 const saveSkillHistory = (
-  data
+  data, input
 ) => {
   try {
     const strengths =
@@ -278,7 +281,7 @@ const saveSkillHistory = (
 
     const city =
       data?.target_city ||
-      selectedCity.value ||
+      input.city ||
       '未指定'
 
     saveHistoryRecord({
@@ -302,7 +305,7 @@ const saveSkillHistory = (
           level,
 
         已选技能:
-          `${selectedSkills.value.length} 项`
+          `${input.skills.length} 项`
       },
 
       detail: {
@@ -310,7 +313,7 @@ const saveSkillHistory = (
           city,
 
         已选技能:
-          [...selectedSkills.value],
+          input.skills,
 
         综合匹配分:
           `${score} 分`,
@@ -363,6 +366,8 @@ const saveSkillHistory = (
 ========================= */
 
 const startTest = async () => {
+  if (loading.value) return
+
   if (
     selectedSkills.value.length === 0
   ) {
@@ -372,11 +377,17 @@ const startTest = async () => {
     return
   }
 
+  const input = {
+    skills: [...selectedSkills.value],
+    city: selectedCity.value || null
+  }
+
   loading.value = true
 
   errorMessage.value = ''
 
   result.value = null
+  completedAssessment.value = null
 
   try {
     const response = await fetch(
@@ -389,14 +400,7 @@ const startTest = async () => {
             'application/json'
         },
 
-        body: JSON.stringify({
-          skills:
-            selectedSkills.value,
-
-          city:
-            selectedCity.value ||
-            null
-        })
+        body: JSON.stringify(input)
       }
     )
 
@@ -427,11 +431,12 @@ const startTest = async () => {
       先正常显示测评结果
     */
     result.value = data
+    completedAssessment.value = input
 
     /*
       测评成功后自动保存历史记录
     */
-    saveSkillHistory(data)
+    saveSkillHistory(data, input)
 
   } catch (error) {
     console.error(error)
@@ -761,6 +766,15 @@ const formatSalary = (
               {{ result.target_city }}
             </strong>
           </div>
+
+          <button
+            v-if="completedAssessment"
+            type="button"
+            class="test-button match-jobs-button"
+            @click="emit('recommend-with-skills', completedAssessment)"
+          >
+            用本次测评技能匹配岗位
+          </button>
 
         </div>
 
@@ -1461,6 +1475,9 @@ const formatSalary = (
   font-size: 13px;
 }
 
+.match-jobs-button {
+  margin-top: 14px;
+}
 
 /* 技能分析 */
 

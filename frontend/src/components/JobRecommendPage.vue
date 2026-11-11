@@ -1,26 +1,31 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 import {
   saveHistoryRecord
 } from '../utils/history'
 
+const props = defineProps({
+  assessmentInput: { type: Object, default: null }
+})
 
 /* =========================
    页面状态
 ========================= */
 
-const city = ref('')
+const city = ref(props.assessmentInput?.city || '')
 const keyword = ref('')
 const education = ref('')
 const minSalary = ref(null)
 
-const selectedSkills = ref([])
+const selectedSkills = ref([...(props.assessmentInput?.skills ?? [])])
 const customSkill = ref('')
+const importedAssessment = ref(Boolean(props.assessmentInput))
 
 const loading = ref(false)
 const errorMessage = ref('')
 const result = ref(null)
+const resultUsesSkills = computed(() => Boolean(result.value?.conditions?.skills?.length))
 
 
 /* =========================
@@ -137,6 +142,7 @@ const clearForm = () => {
   minSalary.value = null
 
   selectedSkills.value = []
+  importedAssessment.value = false
 
   result.value = null
   errorMessage.value = ''
@@ -205,7 +211,7 @@ const getCompanyName = (
 ========================= */
 
 const getJobSummary = (
-  job
+  job, showScore
 ) => {
   const title =
     getJobName(job)
@@ -231,8 +237,8 @@ const getJobSummary = (
   return (
     `${title}｜${company}｜${targetCity}｜${salary}` +
     (
-      score !== null
-        ? `｜${score}% 匹配`
+      showScore && score !== null
+        ? `｜综合匹配分 ${score}/100`
         : ''
     )
   )
@@ -249,14 +255,6 @@ const saveRecommendHistory = (
   try {
     const jobs =
       getRecommendations(data)
-
-    const topJobs =
-      jobs
-        .slice(0, 5)
-        .map(
-          job =>
-            getJobSummary(job)
-        )
 
     const targetCity =
       data?.conditions?.city ||
@@ -288,6 +286,10 @@ const saveRecommendHistory = (
       )
         ? data.conditions.skills
         : [...selectedSkills.value]
+
+    const topJobs = jobs
+      .slice(0, 5)
+      .map(job => getJobSummary(job, userSkills.length > 0))
 
     const total =
       Number(
@@ -548,6 +550,9 @@ const formatSalary = (
         </div>
       </div>
 
+      <p v-if="importedAssessment" class="match-note" role="status">
+        已带入本次测评的技能和城市。可补充岗位方向、薪资或学历，再开始推荐。
+      </p>
 
       <!-- 第一行 -->
       <div class="filter-grid">
@@ -775,7 +780,7 @@ const formatSalary = (
         <div class="result-header">
 
           <div>
-            <h2>智能推荐岗位</h2>
+            <h2>{{ resultUsesSkills ? '智能推荐岗位' : '岗位筛选结果' }}</h2>
 
             <p>
               {{ result.message }}
@@ -792,6 +797,9 @@ const formatSalary = (
 
         </div>
 
+        <p v-if="!resultUsesSkills" class="match-note">
+          补充已掌握的技能后重新推荐，即可查看岗位技能覆盖和待补技能。
+        </p>
 
         <div
           v-if="
@@ -834,9 +842,8 @@ const formatSalary = (
                   }}
                 </strong>
 
-                <span>
-                  {{ job.match_score }}%
-                  推荐
+                <span v-if="resultUsesSkills">
+                  综合匹配分 {{ job.match_score }}/100
                 </span>
 
               </div>
@@ -870,6 +877,11 @@ const formatSalary = (
             </div>
 
 
+            <div v-if="resultUsesSkills && job.skills?.length" class="skill-row skill-coverage">
+              <span class="row-title">技能覆盖</span>
+              <strong>{{ job.matched_skills?.length ?? 0 }}/{{ job.skills.length }} 项</strong>
+            </div>
+
             <!-- 推荐理由 -->
             <div
               v-if="
@@ -902,6 +914,7 @@ const formatSalary = (
             <!-- 已掌握 -->
             <div
               v-if="
+                resultUsesSkills &&
                 job.matched_skills &&
                 job.matched_skills.length
               "
@@ -933,6 +946,7 @@ const formatSalary = (
             <!-- 待补充 -->
             <div
               v-if="
+                resultUsesSkills &&
                 job.missing_skills &&
                 job.missing_skills.length
               "
@@ -1392,6 +1406,20 @@ const formatSalary = (
   font-size: 12px;
 }
 
+.match-note {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.skill-coverage strong {
+  color: var(--primary);
+  font-size: 16px;
+}
 
 .job-meta {
   display: flex;
