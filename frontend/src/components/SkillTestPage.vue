@@ -1,5 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import JobGoalFields from './JobGoalFields.vue'
+import SkillGapPanel from './SkillGapPanel.vue'
+import { buildGoal, createGoal, describeGoal, postJobGoal } from '../utils/jobGoal'
 
 import {
   saveHistoryRecord
@@ -35,24 +38,13 @@ const skillOptions = [
 ]
 
 
-const cityOptions = [
-  '',
-  '北京',
-  '深圳',
-  '上海',
-  '广州',
-  '杭州',
-  '合肥'
-]
-
-
 /* =========================
    页面状态
 ========================= */
 
 const selectedSkills = ref([])
 
-const selectedCity = ref('')
+const goal = ref(createGoal())
 
 const customSkill = ref('')
 
@@ -62,6 +54,8 @@ const result = ref(null)
 const completedAssessment = ref(null)
 
 const errorMessage = ref('')
+let controller
+onBeforeUnmount(() => controller?.abort())
 
 
 /* =========================
@@ -124,6 +118,8 @@ const addCustomSkill = () => {
 
 const clearSkills = () => {
   selectedSkills.value = []
+  goal.value = createGoal()
+  customSkill.value = ''
   result.value = null
   completedAssessment.value = null
   errorMessage.value = ''
@@ -175,6 +171,7 @@ const getRecommendedJobs = (
   data
 ) => {
   const possibleLists = [
+    data?.recommended_jobs,
     data?.recommendations,
     data?.matches,
     data?.top_jobs,
@@ -292,7 +289,7 @@ const saveSkillHistory = (
 
       summary:
         data?.summary ||
-        `本次综合技能匹配度为 ${score} 分，评级：${level}。`,
+        `本次目标岗位技能覆盖分为 ${score} 分，评级：${level}。`,
 
       meta: {
         城市:
@@ -309,13 +306,17 @@ const saveSkillHistory = (
       },
 
       detail: {
+        求职条件: describeGoal(data.conditions),
+
+        目标岗位: `${data.target_sample_count} 条`,
+
         目标城市:
           city,
 
         已选技能:
           input.skills,
 
-        综合匹配分:
+        技能覆盖分:
           `${score} 分`,
 
         测评等级:
@@ -367,85 +368,32 @@ const saveSkillHistory = (
 
 const startTest = async () => {
   if (loading.value) return
-
-  if (
-    selectedSkills.value.length === 0
-  ) {
-    errorMessage.value =
-      '请至少选择一项你已经掌握的技能'
-
+  if (!selectedSkills.value.length) {
+    errorMessage.value = '请至少选择一项你已经掌握的技能'
     return
   }
-
-  const input = {
-    skills: [...selectedSkills.value],
-    city: selectedCity.value || null
-  }
-
-  loading.value = true
-
   errorMessage.value = ''
-
   result.value = null
   completedAssessment.value = null
-
+  let input
   try {
-    const response = await fetch(
-      '/api/skill-match',
-      {
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body: JSON.stringify(input)
-      }
-    )
-
-    if (!response.ok) {
-      let detail = ''
-
-      try {
-        const errorData =
-          await response.json()
-
-        detail =
-          errorData?.detail || ''
-
-      } catch {
-        // 无法解析错误响应时忽略
-      }
-
-      throw new Error(
-        detail ||
-        '技能测评请求失败'
-      )
-    }
-
-    const data =
-      await response.json()
-
-    /*
-      先正常显示测评结果
-    */
-    result.value = data
-    completedAssessment.value = input
-
-    /*
-      测评成功后自动保存历史记录
-    */
-    saveSkillHistory(data, input)
-
+    input = buildGoal(goal.value, selectedSkills.value)
   } catch (error) {
-    console.error(error)
-
-    errorMessage.value =
-      error?.message ||
-      '技能测评服务暂时不可用，请确认后端服务是否已经启动。'
-
+    errorMessage.value = error.message
+    return
+  }
+  loading.value = true
+  controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    const data = await postJobGoal('/api/skill-match', input, controller.signal)
+    result.value = data
+    completedAssessment.value = data.conditions
+    saveSkillHistory(data, data.conditions)
+  } catch (error) {
+    errorMessage.value = error.name === 'AbortError' ? '测评请求等待超时，可稍后重试。' : error.message
   } finally {
+    clearTimeout(timer)
     loading.value = false
   }
 }
@@ -617,44 +565,11 @@ const formatSalary = (
       </div>
 
 
-      <!-- 城市 -->
-
-      <div class="city-row">
-
-        <div>
-          <label>
-            目标城市
-          </label>
-
-          <p>
-            可选；不选择则分析全部城市岗位
-          </p>
-        </div>
-
-
-        <select
-          v-model="selectedCity"
-        >
-          <option value="">
-            全部城市
-          </option>
-
-          <option
-            v-for="
-              city in
-              cityOptions.filter(
-                item => item
-              )
-            "
-            :key="city"
-            :value="city"
-          >
-            {{ city }}
-          </option>
-        </select>
-
+      <div class="assessment-goal">
+        <h3>选择求职目标</h3>
+        <p>推荐岗位和待补技能会使用同一组筛选条件。</p>
+        <JobGoalFields :model-value="goal" :disabled="loading" @patch="Object.assign(goal, $event)" />
       </div>
-
 
       <!-- 操作 -->
 
@@ -662,6 +577,7 @@ const formatSalary = (
 
         <button
           class="clear-button"
+          :disabled="loading"
           @click="clearSkills"
         >
           清空
@@ -725,7 +641,7 @@ const formatSalary = (
 
       <section class="result-summary">
 
-        <div class="score-area">
+        <div v-if="result.target_sample_count && result.skill_sample_count" class="score-area">
 
           <div class="score-circle">
 
@@ -745,7 +661,7 @@ const formatSalary = (
         <div class="summary-content">
 
           <span class="result-label">
-            综合技能匹配度
+            目标岗位技能覆盖
           </span>
 
           <h2>
@@ -757,15 +673,8 @@ const formatSalary = (
           </p>
 
 
-          <div
-            v-if="result.target_city"
-            class="target-city"
-          >
-            目标城市：
-            <strong>
-              {{ result.target_city }}
-            </strong>
-          </div>
+          <p class="target-city">{{ describeGoal(result.conditions) }} · {{ result.target_sample_count }} 条目标样本</p>
+          <p v-if="result.can_expand_city" class="target-city">可勾选「查看其他城市」后重新测评。</p>
 
           <button
             v-if="completedAssessment"
@@ -876,68 +785,7 @@ const formatSalary = (
         </div>
 
 
-        <!-- 缺口 -->
-
-        <div class="analysis-card">
-
-          <div class="analysis-title">
-
-            <div>
-              <h3>
-                建议补充技能
-              </h3>
-
-              <p>
-                当前岗位市场中的高频技能缺口
-              </p>
-            </div>
-
-            <span class="warning-badge">
-              提升
-            </span>
-
-          </div>
-
-
-          <div
-            v-if="
-              result.missing_skills &&
-              result.missing_skills.length
-            "
-            class="tag-list"
-          >
-
-            <div
-              v-for="
-                skill in
-                result.missing_skills
-              "
-              :key="skill.name"
-              class="missing-tag"
-            >
-
-              <span>
-                {{ skill.name }}
-              </span>
-
-              <small>
-                {{ skill.count }}
-                个岗位需求
-              </small>
-
-            </div>
-
-          </div>
-
-
-          <p
-            v-else
-            class="empty-text"
-          >
-            暂未发现明显技能缺口。
-          </p>
-
-        </div>
+        <SkillGapPanel :analysis="result" />
 
       </section>
 
@@ -954,7 +802,7 @@ const formatSalary = (
             </h2>
 
             <p>
-              按技能覆盖率排序，为你展示当前最适合的岗位
+              按技能覆盖率展示有技能交集的目标岗位样本
             </p>
           </div>
 
@@ -1036,7 +884,7 @@ const formatSalary = (
                 🎓
                 {{
                   job.education ||
-                  '学历不限'
+                  '学历未标注'
                 }}
               </span>
 
@@ -1044,7 +892,7 @@ const formatSalary = (
                 💼
                 {{
                   job.experience ||
-                  '经验不限'
+                  '经验未标注'
                 }}
               </span>
 
@@ -1326,39 +1174,8 @@ const formatSalary = (
 
 /* 城市 */
 
-.city-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-top: 22px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
 
 
-.city-row label {
-  color: var(--text);
-  font-weight: 600;
-}
-
-
-.city-row p {
-  margin: 5px 0 0;
-  color: var(--text-3);
-  font-size: 12px;
-}
-
-
-.city-row select {
-  min-width: 170px;
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: #ffffff;
-  outline: none;
-}
 
 
 /* 按钮 */
@@ -1469,7 +1286,10 @@ const formatSalary = (
 }
 
 
-.target-city {
+.assessment-goal { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+.assessment-goal h3 { margin: 0 0 5px; font-size: 16px; }
+.assessment-goal p { margin: 0 0 12px; color: var(--text-2); font-size: 13px; }
+.summary-content .target-city {
   margin-top: 13px;
   color: var(--text-2);
   font-size: 13px;
@@ -1517,26 +1337,14 @@ const formatSalary = (
 }
 
 
-.good-badge,
-.warning-badge {
+.good-badge {
   height: fit-content;
   padding: 5px 9px;
   border-radius: 999px;
   font-size: 12px;
-}
-
-
-.good-badge {
   background: #ecfdf5;
   color: #059669;
 }
-
-
-.warning-badge {
-  background: #fff7ed;
-  color: #ea580c;
-}
-
 
 .tag-list {
   display: flex;
@@ -1546,30 +1354,21 @@ const formatSalary = (
 }
 
 
-.strength-tag,
-.missing-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-}
-
-
 .strength-tag {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 13px;
   background: #ecfdf5;
   color: #047857;
 }
 
 
-.missing-tag {
-  background: #fff7ed;
-  color: #c2410c;
-}
 
-
-.strength-tag small,
-.missing-tag small {
+.strength-tag small {
   opacity: 0.75;
 }
 
@@ -1831,15 +1630,6 @@ const formatSalary = (
 
   .custom-skill-row {
     flex-direction: column;
-  }
-
-  .city-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .city-row select {
-    width: 100%;
   }
 
 }

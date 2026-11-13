@@ -93,7 +93,14 @@ class AskEvidenceTests(unittest.TestCase):
         rows = self.mixed_rows()
         rows[0]['city'] = '上海'
         with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
-            result = ask_question(AskRequest(question='广州 Python 数据分析岗位需要哪些技能？'))
+            question = '广州 Python 数据分析岗位需要哪些技能？'
+            strict = ask_question(AskRequest(question=question))
+            result = ask_question(AskRequest(question=question, goal={
+                'city': '广州', 'job_category': '数据分析', 'keyword': 'Python', 'expand_city': True,
+            }))
+        self.assertFalse(strict['fallback'])
+        self.assertEqual(strict['matches'], [])
+        self.assertTrue(strict['can_expand_city'])
         self.assertTrue(result['fallback'])
         self.assertEqual(result['matched_count'], 1)
         self.assertEqual([m['job_id'] for m in result['matches']], ['ANALYST'])
@@ -107,3 +114,15 @@ class AskEvidenceTests(unittest.TestCase):
         self.assertEqual(result['matches'], [])
         self.assertEqual(result['top_skills'], [])
         self.assertEqual(result['ai_status'], 'no_matches')
+
+    def test_ordinary_question_does_not_expand_city_implicitly(self):
+        rows = [
+            {**self.rows[0], 'city': '广州', 'skills': 'PostGIS'},
+            {**self.rows[1], 'city': '上海', 'skills': 'QGIS'},
+        ]
+        with patch('backend.main.load_jobs', return_value=pd.DataFrame(rows)):
+            result = ask_question(AskRequest(question='广州 QGIS 岗位有哪些？'))
+            self.assertEqual(result['matched_count'], 0)
+            self.assertEqual(result['matches'], [])
+            self.assertFalse(result['fallback'])
+            self.assertTrue(result['can_expand_city'])

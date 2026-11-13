@@ -239,6 +239,54 @@ async def _post_completion(settings, payload):
     except asyncio.TimeoutError:
         raise httpx.ReadTimeout("Model request timed out") from None
 
+
+def request_structured_model(system_prompt, inputs, max_tokens=700):
+    """复用问答的模型配置、请求限额和超时；状态可供其他功能降级。"""
+    try:
+        settings = read_settings()
+    except ConfigurationError:
+        return None, 'config_error'
+    if settings.mode == 'rules':
+        return None, 'disabled'
+    if not settings.api_key:
+        return None, 'not_configured'
+    budget_error = _budget.acquire()
+    if budget_error:
+        return None, budget_error
+    try:
+        payload = {
+            'model': settings.model,
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': json.dumps(inputs, ensure_ascii=False, allow_nan=False)},
+            ],
+            'response_format': {'type': 'json_object'},
+            'thinking': {'type': 'disabled'},
+            'temperature': 0.1,
+            'max_tokens': min(max_tokens, settings.max_tokens),
+            'stream': False,
+        }
+        response = asyncio.run(_post_completion(settings, payload))
+        if response.status_code != 200:
+            return None, {429: 'rate_limited', 401: 'authentication_error', 403: 'authentication_error'}.get(
+                response.status_code, 'provider_error',
+            )
+        if len(response.content) > 250000:
+            return None, 'invalid_response'
+        choice = response.json()['choices'][0]
+        content = choice['message']['content']
+        if choice.get('finish_reason') != 'stop' or not isinstance(content, str) or not 0 < len(content) <= 12000:
+            return None, 'invalid_response'
+        return content, 'generated'
+    except httpx.TimeoutException:
+        return None, 'timeout'
+    except (httpx.HTTPError, httpx.InvalidURL):
+        return None, 'provider_error'
+    except (KeyError, IndexError, AttributeError, ValueError, TypeError):
+        return None, 'invalid_response'
+    finally:
+        _budget.release()
+
 NOTICES = {
     "disabled": "当前使用岗位检索与规则统计。",
     "not_configured": "模型尚未配置，本次展示岗位检索与规则统计结果。",
@@ -290,16 +338,26 @@ def augment_answer(question, retrieved, settings=None):
 
     started = time.monotonic()
     try:
+        context = {
+            'question': question,
+            'scope': '只分析以下展示的岗位样本，不从这些样本推断整个市场。',
+            'city_expansion_notice': result.get('fallback_message'),
+            'evidence': evidence,
+        }
+        system_prompt = SYSTEM_PROMPT
+        if 'data_summary' in result:
+            context['confirmed_conditions'] = result['conditions']
+            context['sample_facts'] = {
+                'target_sample_count': result['target_sample_count'],
+                'skill_sample_count': result['skill_sample_count'],
+                'missing_skills': [{key: gap[key] for key in ('name', 'count')} for gap in result['missing_skills'][:5]],
+            }
+            system_prompt += '\n页面由后端单独显示样本数量、技能频次和匹配分。仅引用岗位原文给出学习与求职建议，不复述或改写这些统计；未标注不能推断为不需要。'
         payload = {
             "model": settings.model,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": json.dumps({
-                    "question": question,
-                    "scope": "只分析以下展示的岗位样本，不从这些样本推断整个市场。",
-                    "city_expansion_notice": result.get("fallback_message"),
-                    "evidence": evidence,
-                }, ensure_ascii=False, allow_nan=False)},
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": json.dumps(context, ensure_ascii=False, allow_nan=False)},
             ],
             "response_format": {"type": "json_object"},
             "thinking": {"type": "disabled"},
@@ -321,6 +379,14 @@ def augment_answer(question, retrieved, settings=None):
         blocks, citations = validate_completion(completion, evidence)
         if not blocks:
             return fallback("insufficient_evidence")
+        if 'data_summary' in result and any(
+            re.search(
+                r'(?:不需要|无需|不要求|不涉及|没有要求)|(?:\d+(?:\.\d+)?\s*(?:[%％]|条岗位|个岗位|[kK]/月|元/月))',
+                block['text'],
+            ) for block in blocks
+        ):
+            # 求职建议的统计由系统直接显示；不接受模型自行否定技能或改写关键数字。
+            return fallback('invalid_response')
         result.update(
             answer_mode="rag", ai_status="generated", ai_notice=NOTICES["generated"],
             model=settings.model, answer_blocks=blocks, citations=citations,

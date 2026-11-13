@@ -1,6 +1,11 @@
 <script setup>
 import { onBeforeUnmount, ref } from 'vue'
 import { saveHistoryRecord } from '../utils/history'
+import JobGoalFields from './JobGoalFields.vue'
+import SkillGapPanel from './SkillGapPanel.vue'
+import { buildGoal, createGoal, describeGoal, postJobGoal, splitEnteredSkills } from '../utils/jobGoal'
+
+const emit = defineEmits(['recommend-with-goal'])
 
 
 /* =========================
@@ -14,6 +19,13 @@ const loading = ref(false)
 const result = ref(null)
 
 const errorMessage = ref('')
+const goalForm = ref(null)
+const goalNotice = ref('')
+const goalSkills = ref('')
+const goalQuestion = ref('')
+const pendingGoalFields = ref([])
+const parsingGoal = ref(false)
+const fieldLabels = { city: '城市', job_category: '岗位类别', recruitment_type: '招聘类型', education: '学历' }
 let activeController = null
 onBeforeUnmount(() => activeController?.abort())
 
@@ -28,6 +40,7 @@ const answerModeLabel = (data) => isModelAnswer(data)
 ========================= */
 
 const examples = [
+  '我是在校本科生，会 Spring Boot 和 MyBatis，想找深圳 Java 后端实习。',
   '广州 Python 数据分析岗位需要哪些技能？',
   '深圳 Java 后端开发岗位需要哪些技能？',
   '北京 Python 岗位有哪些？',
@@ -113,6 +126,7 @@ const saveAskHistory = (
       },
 
       detail: {
+        求职条件: data.conditions ? describeGoal(data.conditions) : '普通问答',
         回答方式: answerModeLabel(data),
         使用模型: isModelAnswer(data) ? (data.model_reported || data.model || '未提供') : '未使用模型生成',
         生成状态: data?.ai_notice || '规则检索',
@@ -164,9 +178,56 @@ const saveAskHistory = (
    提问
 ========================= */
 
-const askQuestion = async () => {
-  if (loading.value) return
+const parseGoal = async () => {
+  if (loading.value || parsingGoal.value) return
   const text = question.value.trim()
+  if (!text || text.length > 600) {
+    errorMessage.value = '请输入 1～600 字的求职目标。'
+    return
+  }
+  parsingGoal.value = true
+  errorMessage.value = ''
+  result.value = null
+  goalForm.value = null
+  pendingGoalFields.value = []
+  const controller = new AbortController()
+  activeController = controller
+  const timer = setTimeout(() => controller.abort(), 50000)
+  try {
+    const data = await postJobGoal('/api/job-goal/parse', { question: text }, controller.signal)
+    goalForm.value = createGoal(data.conditions)
+    goalSkills.value = data.conditions.skills.join('、')
+    goalQuestion.value = text
+    pendingGoalFields.value = data.ambiguous_fields.filter(key => fieldLabels[key])
+    goalNotice.value = data.notice
+  } catch (error) {
+    errorMessage.value = error.name === 'AbortError' ? '整理条件超时，可稍后重试。' : error.message
+  } finally {
+    clearTimeout(timer)
+    if (activeController === controller) activeController = null
+    parsingGoal.value = false
+  }
+}
+
+const updateDraft = (patch) => {
+  Object.assign(goalForm.value, patch)
+  pendingGoalFields.value = pendingGoalFields.value.filter(field => !Object.hasOwn(patch, field))
+}
+
+const useGoal = (destination) => {
+  if (!goalForm.value || loading.value || pendingGoalFields.value.length) return
+  try {
+    const input = buildGoal(goalForm.value, splitEnteredSkills(goalSkills.value))
+    if (destination === 'recommend') emit('recommend-with-goal', input)
+    else askQuestion(input)
+  } catch (error) {
+    errorMessage.value = error.message
+  }
+}
+
+const askQuestion = async (confirmedGoal = null) => {
+  if (loading.value || parsingGoal.value) return
+  const text = (confirmedGoal ? goalQuestion.value : question.value).trim()
 
   if (!text) {
     errorMessage.value =
@@ -198,7 +259,8 @@ const askQuestion = async () => {
         },
 
         body: JSON.stringify({
-          question: text
+          question: text,
+          ...(confirmedGoal ? { goal: confirmedGoal } : {}),
         })
       }
     )
@@ -359,15 +421,15 @@ const formatSalary = (
           maxlength="2000"
           aria-label="就业问题"
           placeholder="例如：深圳 Java 后端开发岗位需要哪些技能？"
-          @keydown.ctrl.enter.prevent="askQuestion"
+          @keydown.ctrl.enter.prevent="askQuestion()"
         >
         </textarea>
 
 
         <button
           class="send-button"
-          :disabled="loading"
-          @click="askQuestion"
+          :disabled="loading || parsingGoal"
+          @click="askQuestion()"
         >
           {{
             loading
@@ -382,6 +444,10 @@ const formatSalary = (
       <div class="shortcut-tip">
         Ctrl + Enter 快速发送
       </div>
+
+      <button type="button" class="goal-trigger" :disabled="loading || parsingGoal" @click="parseGoal">
+        {{ parsingGoal ? '正在整理条件…' : '整理为求职条件' }}
+      </button>
 
 
       <!-- 推荐问题 -->
@@ -404,6 +470,25 @@ const formatSalary = (
 
       </div>
 
+    </section>
+
+    <section v-if="goalForm" class="ask-card goal-draft" aria-label="确认求职条件">
+      <h2>确认求职条件</h2>
+      <p role="status">{{ goalNotice }}</p>
+      <p class="goal-question">本次目标：{{ goalQuestion }}</p>
+      <JobGoalFields :model-value="goalForm" :disabled="loading" @patch="updateDraft" />
+      <div v-if="pendingGoalFields.length" class="goal-actions" role="status">
+        <p>请确认：{{ pendingGoalFields.map(field => fieldLabels[field]).join('、') }}。</p>
+        <button type="button" class="goal-trigger" @click="pendingGoalFields = []">这些条件不限</button>
+      </div>
+      <label class="goal-skills">
+        <span>已掌握技能（用顿号或逗号分隔）</span>
+        <input v-model="goalSkills" :disabled="loading" maxlength="800" placeholder="例如 Spring Boot、MyBatis" />
+      </label>
+      <div class="goal-actions">
+        <button type="button" class="goal-trigger" :disabled="loading || pendingGoalFields.length > 0" @click="useGoal('ask')">按这些条件分析</button>
+        <button type="button" class="goal-trigger primary" :disabled="loading || pendingGoalFields.length > 0" @click="useGoal('recommend')">带入岗位推荐</button>
+      </div>
     </section>
 
 
@@ -501,6 +586,17 @@ const formatSalary = (
             · {{ result.model_reported || result.model }}
           </template>
         </p>
+        <p v-if="result.conditions" class="generation-meta">
+          本次条件：{{ describeGoal(result.conditions) }}
+        </p>
+        <p v-if="isModelAnswer(result) && result.data_summary" class="mode-notice">样本统计：{{ result.data_summary }}</p>
+        <p v-if="result.can_expand_city" class="mode-notice">
+          {{ goalForm ? '如需查看其他城市，请勾选确认区的扩展选项，再重新分析。' : '如需调整条件或查看其他城市，请先点击「整理为求职条件」。' }}
+        </p>
+        <div v-if="result.conditions && result.target_sample_count" class="goal-actions">
+          <button type="button" class="goal-trigger" @click="emit('recommend-with-goal', result.conditions)">用本次分析条件匹配岗位</button>
+        </div>
+        <SkillGapPanel v-if="result.target_sample_count && result.conditions?.skills?.length" :analysis="result" class="ask-gaps" />
 
         <section v-if="isModelAnswer(result) && result.citations?.length" class="citation-excerpts">
           <h3>本次引用摘录</h3>
@@ -644,7 +740,7 @@ const formatSalary = (
               {{
                 result.fallback
                   ? '当前城市暂无严格匹配岗位，以下为其他城市的相近岗位样本'
-                  : '根据岗位名称、城市、技能和职位描述综合匹配'
+                  : result.conditions ? '按本次求职条件筛选的岗位样本' : '根据岗位名称、城市、技能和职位描述综合匹配'
               }}
             </p>
 
@@ -729,7 +825,7 @@ const formatSalary = (
               </span>
 
 
-              <span class="score-tag">
+              <span v-if="!result.conditions" class="score-tag">
                 匹配度
                 {{ job.score }}
               </span>
@@ -815,6 +911,18 @@ const formatSalary = (
 
 
 <style scoped>
+
+.goal-draft { margin-top: 16px; }
+.goal-draft h2 { margin: 0 0 6px; font-size: 18px; }
+.goal-draft p { margin: 0 0 12px; color: #51617c; line-height: 1.6; font-size: 13px; overflow-wrap: anywhere; }
+.goal-draft .goal-question { padding: 8px 10px; border-radius: 7px; background: #f4f5ff; }
+.goal-skills { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; }
+.goal-skills input { box-sizing: border-box; width: 100%; min-width: 0; height: 42px; padding: 0 10px; border: 1px solid #dbe4f1; border-radius: 8px; font: inherit; }
+.goal-trigger { padding: 8px 12px; border-radius: 8px; color: #4338ca; background: #eef0ff; border: 1px solid #d8defc; cursor: pointer; }
+.goal-trigger.primary { color: #fff; background: #4f46e5; border-color: #4f46e5; }
+.goal-trigger:disabled { opacity: 0.65; cursor: wait; }
+.goal-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ask-gaps { margin-top: 14px; }
 
 .answer-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .answer-text > p { margin: 0 0 14px; }

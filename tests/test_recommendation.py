@@ -192,17 +192,17 @@ class TestRecommendationRules(unittest.TestCase):
         self.assertFalse(result["fallback"])
 
     def test_16_fallback_preserves_other_conditions(self):
-        """扩展城市后，仍需满足方向、技能交集、最低薪资和学历条件。"""
+        """用户选择扩城后，仍需满足类别、关键词、技能交集、薪资与学历条件。"""
         rows = [
-            make_job("local-wrong", skills="Photoshop"),
+            make_job("local-wrong", job_category="测试开发"),
             make_job("other-good", city="广州"),
             make_job("other-low", city="上海", salary_min=5000, salary_max=20000),
             make_job("other-degree", city="北京", education="博士"),
             make_job("other-skill", city="杭州", skills="Photoshop"),
         ]
         result = self.recommend(
-            rows, city="深圳", keyword="Java", skills=["Java"],
-            min_salary=10, education="本科",
+            rows, city="深圳", job_category="后端开发", keyword="Java", skills=["Java"],
+            min_salary=10, education="本科", expand_city=True,
         )
         self.assertTrue(result["fallback"])
         self.assertEqual(self.job_ids(result), ["other-good"])

@@ -28,7 +28,7 @@ const HistoryPage = defineAsyncComponent(() => import('./components/HistoryPage.
 const { activePage, setPage, navigate } = usePageNavigation()
 const recommendationInput = ref(null)
 
-const openSkillRecommendations = async (input) => {
+const openGoalRecommendations = async (input) => {
   recommendationInput.value = input
   setPage('recommend')
   await nextTick()
@@ -859,6 +859,7 @@ onBeforeUnmount(() => {
         v-else-if="
           activePage === 'ask'
         "
+        @recommend-with-goal="openGoalRecommendations"
       />
 
 
@@ -870,7 +871,7 @@ onBeforeUnmount(() => {
         v-else-if="
           activePage === 'skills'
         "
-        @recommend-with-skills="openSkillRecommendations"
+        @recommend-with-skills="openGoalRecommendations"
       />
 
 
