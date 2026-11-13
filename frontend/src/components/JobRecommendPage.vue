@@ -1,5 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
+import JobGoalFields from './JobGoalFields.vue'
+import SkillGapPanel from './SkillGapPanel.vue'
+import { buildGoal, createGoal, describeGoal, postJobGoal } from '../utils/jobGoal'
 
 import {
   saveHistoryRecord
@@ -13,10 +16,7 @@ const props = defineProps({
    页面状态
 ========================= */
 
-const city = ref(props.assessmentInput?.city || '')
-const keyword = ref('')
-const education = ref('')
-const minSalary = ref(null)
+const goal = ref(createGoal(props.assessmentInput))
 
 const selectedSkills = ref([...(props.assessmentInput?.skills ?? [])])
 const customSkill = ref('')
@@ -26,36 +26,9 @@ const loading = ref(false)
 const errorMessage = ref('')
 const result = ref(null)
 const resultUsesSkills = computed(() => Boolean(result.value?.conditions?.skills?.length))
-
-
-/* =========================
-   城市
-========================= */
-
-const cities = [
-  '深圳',
-  '广州',
-  '北京',
-  '上海',
-  '杭州',
-  '合肥'
-]
-
-
-/* =========================
-   岗位方向
-========================= */
-
-const jobDirections = [
-  'Java',
-  'Python',
-  '数据分析',
-  '前端',
-  '后端',
-  '算法',
-  '测试',
-  '运维'
-]
+const scoreLabel = (basis) => basis === 'coverage' ? '技能覆盖分' : '综合匹配分'
+let controller
+onBeforeUnmount(() => controller?.abort())
 
 
 /* =========================
@@ -136,12 +109,9 @@ const addCustomSkill = () => {
 ========================= */
 
 const clearForm = () => {
-  city.value = ''
-  keyword.value = ''
-  education.value = ''
-  minSalary.value = null
-
+  goal.value = createGoal()
   selectedSkills.value = []
+  customSkill.value = ''
   importedAssessment.value = false
 
   result.value = null
@@ -149,326 +119,57 @@ const clearForm = () => {
 }
 
 
-/* =========================
-   获取推荐岗位列表
-========================= */
-
-const getRecommendations = (
-  data
-) => {
-  if (
-    Array.isArray(
-      data?.recommendations
-    )
-  ) {
-    return data.recommendations
-  }
-
-  if (
-    Array.isArray(
-      data?.matches
-    )
-  ) {
-    return data.matches
-  }
-
-  return []
-}
-
-
-/* =========================
-   格式化岗位标题
-========================= */
-
-const getJobName = (
-  job
-) => {
-  return (
-    job?.job_title ||
-    job?.title ||
-    '未命名岗位'
-  )
-}
-
-
-/* =========================
-   格式化公司
-========================= */
-
-const getCompanyName = (
-  job
-) => {
-  return (
-    job?.company_name ||
-    job?.company ||
-    '未知公司'
-  )
-}
-
-
-/* =========================
-   格式化岗位摘要
-========================= */
-
-const getJobSummary = (
-  job, showScore
-) => {
-  const title =
-    getJobName(job)
-
-  const company =
-    getCompanyName(job)
-
-  const targetCity =
-    job?.city ||
-    '城市不限'
-
-  const salary =
-    formatSalary(
-      job?.salary_min,
-      job?.salary_max
-    )
-
-  const score =
-    job?.match_score ??
-    job?.score ??
-    null
-
-  return (
-    `${title}｜${company}｜${targetCity}｜${salary}` +
-    (
-      showScore && score !== null
-        ? `｜综合匹配分 ${score}/100`
-        : ''
-    )
-  )
-}
-
-
-/* =========================
-   保存岗位推荐历史
-========================= */
-
-const saveRecommendHistory = (
-  data
-) => {
+const saveRecommendHistory = (data) => {
   try {
-    const jobs =
-      getRecommendations(data)
-
-    const targetCity =
-      data?.conditions?.city ||
-      city.value ||
-      '不限城市'
-
-    const targetKeyword =
-      data?.conditions?.keyword ||
-      keyword.value ||
-      '不限方向'
-
-    const targetEducation =
-      data?.conditions?.education ||
-      education.value ||
-      '不限学历'
-
-    const targetSalary =
-      data?.conditions?.min_salary ??
-      (
-        minSalary.value === null ||
-        minSalary.value === ''
-          ? null
-          : Number(minSalary.value)
-      )
-
-    const userSkills =
-      Array.isArray(
-        data?.conditions?.skills
-      )
-        ? data.conditions.skills
-        : [...selectedSkills.value]
-
-    const topJobs = jobs
-      .slice(0, 5)
-      .map(job => getJobSummary(job, userSkills.length > 0))
-
-    const total =
-      Number(
-        data?.total ??
-        jobs.length
-      )
-
+    const conditions = data.conditions
+    const scope = describeGoal(conditions)
     saveHistoryRecord({
       type: 'recommend',
-
-      title:
-        `${
-          targetCity === '不限城市'
-            ? ''
-            : targetCity + ' '
-        }${
-          targetKeyword === '不限方向'
-            ? '岗位推荐'
-            : targetKeyword + ' 岗位推荐'
-        }`,
-
-      summary:
-        data?.message ||
-        (
-          total > 0
-            ? `根据当前求职条件，共匹配到 ${total} 条岗位。`
-            : '当前条件下暂未匹配到合适岗位。'
-        ),
-
+      title: `${scope} 岗位推荐`,
+      summary: data.message,
       meta: {
-        城市:
-          targetCity,
-
-        岗位方向:
-          targetKeyword,
-
-        匹配岗位:
-          `${total} 条`,
-
-        已选技能:
-          `${userSkills.length} 项`
+        目标岗位: `${data.target_sample_count} 条`,
+        匹配岗位: `${data.total} 条`,
+        已选技能: `${conditions.skills.length} 项`,
       },
-
       detail: {
-        目标城市:
-          targetCity,
-
-        岗位方向:
-          targetKeyword,
-
-        已选技能:
-          userSkills,
-
-        最低期望薪资:
-          targetSalary !== null &&
-          targetSalary !== undefined
-            ? `${targetSalary}K`
-            : '不限',
-
-        学历要求:
-          targetEducation,
-
-        匹配岗位数量:
-          total,
-
-        推荐岗位:
-          topJobs,
-
-        是否扩展检索:
-          data?.fallback
-            ? '是'
-            : '否',
-
-        扩展检索说明:
-          data?.fallback_message ||
-          '无'
-      }
+        求职条件: scope,
+        已选技能: conditions.skills,
+        推荐岗位: data.recommendations.slice(0, 5).map(job => (
+          `${job.job_title}｜${job.company_name}｜${job.city}｜${formatSalary(job.salary_min, job.salary_max)}` +
+          (conditions.skills.length ? `｜${scoreLabel(data.ranking_basis)} ${job.match_score}/100` : '')
+        )),
+        待补技能: data.missing_skills.map(skill => `${skill.name}：${skill.count}/${data.skill_sample_count} 条样本`),
+        扩展检索说明: data.fallback_message || '无',
+      },
     })
-
   } catch (error) {
-    /*
-      历史记录保存失败，
-      不影响岗位推荐主功能。
-    */
-    console.error(
-      '保存岗位推荐历史记录失败：',
-      error
-    )
+    console.error('保存岗位推荐历史记录失败：', error)
   }
 }
 
-
-/* =========================
-   岗位推荐
-========================= */
-
 const recommendJobs = async () => {
-  loading.value = true
-
+  if (loading.value) return
   errorMessage.value = ''
-
   result.value = null
-
+  let input
   try {
-    const response = await fetch(
-      '/api/recommend',
-      {
-        method: 'POST',
-
-        headers: {
-          'Content-Type':
-            'application/json'
-        },
-
-        body: JSON.stringify({
-          city:
-            city.value || null,
-
-          keyword:
-            keyword.value || null,
-
-          skills:
-            selectedSkills.value,
-
-          min_salary:
-            minSalary.value === null ||
-            minSalary.value === ''
-              ? null
-              : Number(
-                  minSalary.value
-                ),
-
-          education:
-            education.value || null
-        })
-      }
-    )
-
-    if (!response.ok) {
-      let detail = ''
-
-      try {
-        const errorData =
-          await response.json()
-
-        detail =
-          errorData?.detail || ''
-
-      } catch {
-        // 无法解析错误响应时忽略
-      }
-
-      throw new Error(
-        detail ||
-        '岗位推荐请求失败'
-      )
-    }
-
-    const data =
-      await response.json()
-
-    /*
-      先正常显示推荐结果
-    */
-    result.value = data
-
-    /*
-      推荐成功后自动保存历史记录
-    */
-    saveRecommendHistory(data)
-
+    input = buildGoal(goal.value, selectedSkills.value)
   } catch (error) {
-    console.error(error)
-
-    errorMessage.value =
-      error?.message ||
-      '岗位推荐服务暂时不可用，请确认后端已经启动。'
-
+    errorMessage.value = error.message
+    return
+  }
+  loading.value = true
+  controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 15000)
+  try {
+    const data = await postJobGoal('/api/recommend', input, controller.signal)
+    result.value = data
+    saveRecommendHistory(data)
+  } catch (error) {
+    errorMessage.value = error.name === 'AbortError' ? '推荐请求等待超时，可稍后重试。' : error.message
   } finally {
+    clearTimeout(timer)
     loading.value = false
   }
 }
@@ -528,7 +229,7 @@ const formatSalary = (
         <h1>岗位推荐</h1>
 
         <p>
-          根据目标城市、岗位方向、技能与薪资要求，为你匹配更合适的岗位
+          先筛选求职目标，再查看岗位匹配与技能差距
         </p>
       </div>
 
@@ -545,96 +246,16 @@ const formatSalary = (
         <div>
           <h2>设置求职条件</h2>
           <p>
-            条件越完整，岗位推荐结果越准确
+            按岗位类别、招聘类型和个人条件筛选当前岗位样本
           </p>
         </div>
       </div>
 
       <p v-if="importedAssessment" class="match-note" role="status">
-        已带入本次测评的技能和城市。可补充岗位方向、薪资或学历，再开始推荐。
+        已带入上一步的求职条件和技能，可修改后再开始推荐。
       </p>
 
-      <!-- 第一行 -->
-      <div class="filter-grid">
-
-        <div class="field">
-          <label>目标城市</label>
-
-          <select v-model="city">
-            <option value="">
-              全部城市
-            </option>
-
-            <option
-              v-for="item in cities"
-              :key="item"
-              :value="item"
-            >
-              {{ item }}
-            </option>
-          </select>
-        </div>
-
-
-        <div class="field">
-          <label>岗位方向</label>
-
-          <select v-model="keyword">
-            <option value="">
-              不限岗位方向
-            </option>
-
-            <option
-              v-for="item in jobDirections"
-              :key="item"
-              :value="item"
-            >
-              {{ item }}
-            </option>
-          </select>
-        </div>
-
-
-        <div class="field">
-          <label>最低期望薪资</label>
-
-          <div class="salary-input">
-            <input
-              v-model="minSalary"
-              type="number"
-              min="0"
-              placeholder="例如 10"
-            />
-
-            <span>K</span>
-          </div>
-        </div>
-
-
-        <div class="field">
-          <label>学历</label>
-
-          <select v-model="education">
-            <option value="">
-              不限学历
-            </option>
-
-            <option value="大专">
-              大专
-            </option>
-
-            <option value="本科">
-              本科
-            </option>
-
-            <option value="硕士">
-              硕士
-            </option>
-          </select>
-        </div>
-
-      </div>
-
+      <JobGoalFields :model-value="goal" :disabled="loading" @patch="Object.assign(goal, $event)" />
 
       <!-- 技能 -->
       <div class="skills-area">
@@ -713,6 +334,7 @@ const formatSalary = (
 
         <button
           class="clear-button"
+          :disabled="loading"
           @click="clearForm"
         >
           重置条件
@@ -783,7 +405,7 @@ const formatSalary = (
             <h2>{{ resultUsesSkills ? '智能推荐岗位' : '岗位筛选结果' }}</h2>
 
             <p>
-              {{ result.message }}
+              {{ describeGoal(result.conditions) }}。{{ result.message }}
             </p>
           </div>
 
@@ -797,7 +419,12 @@ const formatSalary = (
 
         </div>
 
-        <p v-if="!resultUsesSkills" class="match-note">
+        <p v-if="!result.fallback && result.can_expand_city" class="match-note" role="status">
+          {{ result.fallback_message }} 勾选上方「查看其他城市」后重新推荐即可。
+        </p>
+        <SkillGapPanel :analysis="result" class="recommend-gaps" />
+
+        <p v-if="!resultUsesSkills && result.target_sample_count" class="match-note">
           补充已掌握的技能后重新推荐，即可查看岗位技能覆盖和待补技能。
         </p>
 
@@ -843,7 +470,7 @@ const formatSalary = (
                 </strong>
 
                 <span v-if="resultUsesSkills">
-                  综合匹配分 {{ job.match_score }}/100
+                  {{ scoreLabel(result.ranking_basis) }} {{ job.match_score }}/100
                 </span>
 
               </div>
@@ -857,12 +484,14 @@ const formatSalary = (
               <span>
                 📍 {{ job.city }}
               </span>
+              <span v-if="job.job_category">{{ job.job_category }}</span>
+              <span v-if="job.recruitment_type">{{ job.recruitment_type }}</span>
 
               <span>
                 🎓
                 {{
                   job.education ||
-                  '学历不限'
+                  '学历未标注'
                 }}
               </span>
 
@@ -870,7 +499,7 @@ const formatSalary = (
                 💼
                 {{
                   job.experience ||
-                  '经验不限'
+                  '经验未标注'
                 }}
               </span>
 
@@ -983,7 +612,7 @@ const formatSalary = (
           v-else
           class="empty-result"
         >
-          当前条件暂未匹配到岗位，可以尝试降低薪资要求或取消部分筛选条件。
+          {{ result.target_sample_count ? '暂未匹配到已掌握技能，可先查看待补技能。' : '当前样本没有符合全部条件的岗位。' }}
         </div>
 
       </section>
@@ -1057,64 +686,7 @@ const formatSalary = (
 }
 
 
-.filter-grid {
-  display: grid;
-  grid-template-columns:
-    repeat(4, 1fr);
-  gap: 16px;
-  margin-top: 24px;
-}
 
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-
-.field label {
-  color: var(--text-2);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-
-.field select,
-.field input {
-  width: 100%;
-  height: 42px;
-  padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: #ffffff;
-  outline: none;
-  font-family: inherit;
-}
-
-
-.field select:focus,
-.field input:focus {
-  border-color: var(--brand-2);
-}
-
-
-.salary-input {
-  position: relative;
-}
-
-
-.salary-input input {
-  padding-right: 36px;
-}
-
-
-.salary-input span {
-  position: absolute;
-  right: 12px;
-  top: 11px;
-  color: var(--text-3);
-}
 
 
 /* 技能 */
@@ -1416,6 +988,8 @@ const formatSalary = (
   line-height: 1.6;
 }
 
+.recommend-gaps { margin-bottom: 16px; }
+
 .skill-coverage strong {
   color: var(--primary);
   font-size: 16px;
@@ -1497,21 +1071,10 @@ const formatSalary = (
 
 /* 响应式 */
 
-@media (max-width: 1000px) {
 
-  .filter-grid {
-    grid-template-columns:
-      repeat(2, 1fr);
-  }
-
-}
 
 
 @media (max-width: 700px) {
-
-  .filter-grid {
-    grid-template-columns: 1fr;
-  }
 
   .custom-row {
     flex-direction: column;

@@ -368,9 +368,10 @@ class RagRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code,200)
         result=response.json()
         self.assertEqual(result["answer_mode"],"rag")
-        self.assertEqual(result["matched_count"],7)
-        self.assertEqual(len(result["matches"]),5)
-        self.assertEqual(len(requests),1)
+        self.assertEqual(result["matched_count"], 3)
+        self.assertEqual(len(result["matches"]), 3)
+        self.assertEqual(len(requests), 1)
+        self.assertTrue(all(row["job_category"] == "后端开发" for row in requests[0]["evidence"]))
         cited=result["citations"][0]
         row=next(row for row in result["matches"] if row["job_id"]==cited["job_id"])
         self.assertIn(cited["quote"],row["job_description"])
