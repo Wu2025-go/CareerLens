@@ -9,6 +9,9 @@ import {
   watch
 } from 'vue'
 
+import DatasetControls from './components/DatasetControls.vue'
+import { datasetScope, datasetUrl, refreshDatasetInfo } from './utils/dataset'
+
 import { usePageNavigation } from './utils/navigation'
 import { authState, logoutAccount, restoreSession } from './utils/auth.js'
 
@@ -27,6 +30,14 @@ const HistoryPage = defineAsyncComponent(() => import('./components/HistoryPage.
 
 const { activePage, setPage, navigate } = usePageNavigation()
 const recommendationInput = ref(null)
+const trendInput = ref(null)
+const openGoalTrends = (input) => { trendInput.value = input; setPage('trends'); window.scrollTo(0, 0) }
+watch(datasetScope, () => {
+  recommendationInput.value = null
+  trendInput.value = null
+  refreshDatasetInfo()
+  loadDashboard()
+})
 
 const openGoalRecommendations = async (input) => {
   recommendationInput.value = input
@@ -225,6 +236,17 @@ const renderTrendChart = async () => {
 
 const loadDashboard = async () => {
   dashboardError.value = ''
+  const requestScope = datasetScope.value
+  overview.jobCount = '加载中…'
+  overview.avgSalary = '--'
+  overview.hotIndustry = '加载中…'
+  cities.value = []
+  salaryDistribution.value = []
+  skills.value = []
+  trend.months = []
+  trend.values = []
+  trendChartInstance?.dispose()
+  trendChartInstance = null
 
   try {
     const [
@@ -232,11 +254,11 @@ const loadDashboard = async () => {
       dashboardResponse
     ] = await Promise.all([
       fetch(
-        '/api/overview'
+        datasetUrl('/api/overview')
       ),
 
       fetch(
-        '/api/dashboard'
+        datasetUrl('/api/dashboard')
       )
     ])
 
@@ -259,6 +281,8 @@ const loadDashboard = async () => {
       await dashboardResponse.json()
 
 
+    if (requestScope !== datasetScope.value) return
+
     /* 顶部统计 */
 
     overview.jobCount =
@@ -267,7 +291,7 @@ const loadDashboard = async () => {
       ).toLocaleString()
 
     overview.avgSalary =
-      overviewData.avg_salary ?? 0
+      overviewData.avg_salary ?? '暂无数据'
 
     overview.hotIndustry =
       overviewData.hot_industry ||
@@ -295,6 +319,7 @@ const loadDashboard = async () => {
     await renderTrendChart()
 
   } catch (error) {
+    if (requestScope !== datasetScope.value) return
     console.error(error)
 
     dashboardError.value =
@@ -362,6 +387,7 @@ watch(
   activePage,
   async (page) => {
     if (page !== 'recommend') recommendationInput.value = null
+    if (page !== 'trends') trendInput.value = null
     if (page === 'dashboard') {
       await renderTrendChart()
     }
@@ -374,6 +400,7 @@ watch(
 ========================================================= */
 
 onMounted(() => {
+  refreshDatasetInfo()
   loadDashboard()
   restoreSession()
 
@@ -543,6 +570,7 @@ onBeforeUnmount(() => {
     ==================================================== -->
 
     <main class="main">
+      <DatasetControls />
 
       <section v-if="activePage === 'not-found'" class="error-box">
         <h1>页面不存在</h1>
@@ -616,13 +644,13 @@ onBeforeUnmount(() => {
               </span>
 
               <p>
-                平均薪资
+                样本薪资参考均值
               </p>
 
             </div>
 
             <strong>
-              ¥{{ overview.avgSalary }}k
+              {{ typeof overview.avgSalary === 'number' ? `${overview.avgSalary}K/月` : overview.avgSalary }}
             </strong>
 
           </div>
@@ -637,7 +665,7 @@ onBeforeUnmount(() => {
               </span>
 
               <p>
-                热门行业
+                热门岗位类别
               </p>
 
             </div>
@@ -856,10 +884,12 @@ onBeforeUnmount(() => {
       ================================================== -->
 
       <AskPage
+        :key="datasetScope"
         v-else-if="
           activePage === 'ask'
         "
         @recommend-with-goal="openGoalRecommendations"
+        @view-trends="openGoalTrends"
       />
 
 
@@ -868,6 +898,7 @@ onBeforeUnmount(() => {
       ================================================== -->
 
       <SkillTestPage
+        :key="datasetScope"
         v-else-if="
           activePage === 'skills'
         "
@@ -880,6 +911,7 @@ onBeforeUnmount(() => {
       ================================================== -->
 
       <JobRecommendPage
+        :key="datasetScope"
         v-else-if="
           activePage === 'recommend'
         "
@@ -892,6 +924,8 @@ onBeforeUnmount(() => {
       ================================================== -->
 
       <TrendPage
+        :key="datasetScope + JSON.stringify(trendInput)"
+        :initial-goal="trendInput"
         v-else-if="
           activePage === 'trends'
         "

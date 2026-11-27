@@ -11,12 +11,13 @@ from backend.job_matching import (
     skill_evidence,
 )
 from backend.rag import request_structured_model
+from backend.datasets import DatasetScope
 
 
 TECH_TERMS = (
     'Spring Boot', 'Spring Cloud', 'Spring', 'JavaScript', 'TypeScript', 'Java',
     'Python', 'SQL', 'MySQL', 'PostgreSQL', 'Linux', 'Git', 'Vue', 'React',
-    'C++', 'C#', 'Go', 'Rust', 'Node.js', 'PHP', 'Docker', 'Kubernetes',
+    'C++', 'C#', '.NET', 'Go', 'Rust', 'Node.js', 'PHP', 'Docker', 'Kubernetes',
     'Redis', 'Kafka', 'MyBatis', 'Django', 'FastAPI', 'Excel', 'Power BI',
     'RESTful API', '单元测试', '数据清洗', '机器学习',
 )
@@ -30,6 +31,15 @@ CATEGORY_HINTS = {
     '数据分析': ('数据分析', '数据运营分析'),
     '数据开发': ('数仓开发', '数据仓库开发', '大数据开发', 'ETL开发'),
     'UI/UX设计': ('UI设计', '交互设计'),
+    '内容运营': ('内容运营', '新媒体运营', '新媒体', '社群运营'),
+    '电商运营': ('电商运营', '淘宝运营', '抖店运营', '独立站运营'),
+    '财务会计': ('财务', '会计', '审计'),
+    '市场营销': ('营销', '市场推广', '品牌推广'),
+    '人力资源': ('人力资源', '招聘专员', 'HR岗位'),
+    '供应链物流': ('供应链', '物流'),
+    '销售商务': ('销售', '商务拓展'),
+    '法务合规': ('法务', '合规'),
+    '金融风控': ('金融风控', '风控'),
 }
 CITY_HINTS = {'深圳': ('鹏城',), '广州': ('羊城',)}
 PROFILE_MARKER = re.compile(
@@ -49,10 +59,11 @@ CHOICE = re.compile(r'或者|或|\bor\b', re.I)
 
 class GoalQuestion(BaseModel):
     question: str = Field(min_length=1, max_length=600)
+    dataset_scope: DatasetScope = 'real'
 
 
-def _find_technical_terms(text):
-    found = [name for name in TECH_TERMS if contains_keyword(text, name)]
+def _find_technical_terms(text, vocabulary=()):
+    found = list(dict.fromkeys(name for name in (*TECH_TERMS, *vocabulary) if contains_keyword(text, name)))
     if any(name in found for name in ('Spring Boot', 'Spring Cloud')) and 'Spring' in found:
         # 复合框架名称中包含的 Spring 不再单独算一次。
         stripped = re.sub(r'spring[\s-]*(?:boot|cloud)', '', text, flags=re.I)
@@ -86,10 +97,13 @@ def _split_profile(text):
 
 
 def _category_hits(text, categories):
-    return [
+    hits = [
         name for name in categories
         if any(contains_keyword(text, hint) for hint in (name, *CATEGORY_HINTS.get(name, ())))
     ]
+    if not hits and '运营' in text:
+        return [name for name in ('内容运营', '电商运营') if name in categories]
+    return hits
 
 
 def _candidate_degrees(text):
@@ -112,7 +126,7 @@ def _candidate_degrees(text):
 def parse_goal_rules(question, options):
     text = unicodedata.normalize('NFKC', question).strip()
     target, profile = _split_profile(text)
-    skills = _find_technical_terms(profile)
+    skills = _find_technical_terms(profile, options.get('skill_names', []))
     city_hits = [
         city for city in options['cities']
         if any(alias in text for alias in (city, *CITY_HINTS.get(city, ())))
@@ -199,7 +213,9 @@ keyword 只放目标技术栈，多个同时要求用空格，明确择一用“
 def interpret_job_goal(df, question):
     options = matching_options(df)
     conditions, ambiguous = parse_goal_rules(question, options)
-    content, status = request_structured_model(GOAL_PROMPT, {'question': question, **options}, max_tokens=480)
+    content, status = request_structured_model(GOAL_PROMPT, {
+        'question': question, 'cities': options['cities'], 'categories': options['categories'],
+    }, max_tokens=480)
     used_ai = False
     if content is not None:
         try:
@@ -265,7 +281,7 @@ def retrieve_for_goal(df, request, *, confirmed=True):
             **job,
             'job_description': original['_job_description'],
             'skills': original['_raw_skills'],
-            'dataset': 'jobs_sample.csv',
+            'dataset': df.attrs.get('dataset_file', 'jobs_sample.csv'),
             'score': job['match_score'],
         })
     counts = {}

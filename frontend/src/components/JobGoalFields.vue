@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { datasetUrl } from '../utils/dataset'
 
 const props = defineProps({
   modelValue: { type: Object, required: true },
@@ -19,7 +20,7 @@ const loadOptions = async () => {
   controller = new AbortController()
   optionError.value = false
   try {
-    const response = await fetch('/api/job-goal/options', { signal: controller.signal })
+    const response = await fetch(datasetUrl('/api/job-goal/options'), { signal: controller.signal })
     if (!response.ok) throw new Error('options unavailable')
     options.value = await response.json()
   } catch (error) {
@@ -56,7 +57,7 @@ onBeforeUnmount(() => controller?.abort())
       </select>
     </label>
     <label>
-      <span>技术关键词</span>
+      <span>岗位或技能关键词</span>
       <input :value="modelValue.keyword" maxlength="120" placeholder="例如 Java 或 Python"
         @input="update('keyword', $event.target.value)" />
     </label>

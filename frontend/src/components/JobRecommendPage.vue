@@ -1,4 +1,5 @@
 <script setup>
+import { useSkillOptions } from '../utils/dataset'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import JobGoalFields from './JobGoalFields.vue'
 import SkillGapPanel from './SkillGapPanel.vue'
@@ -17,6 +18,7 @@ const props = defineProps({
 ========================= */
 
 const goal = ref(createGoal(props.assessmentInput))
+const { skillOptions, skillOptionError } = useSkillOptions(goal)
 
 const selectedSkills = ref([...(props.assessmentInput?.skills ?? [])])
 const customSkill = ref('')
@@ -35,28 +37,7 @@ onBeforeUnmount(() => controller?.abort())
    可选技能
 ========================= */
 
-const skillOptions = [
-  'Java',
-  'Python',
-  'SQL',
-  'Linux',
-  'Git',
-  'Spring',
-  'Spring Boot',
-  'Spring Cloud',
-  'MySQL',
-  'Redis',
-  'Kafka',
-  'Docker',
-  'K8s',
-  'Vue',
-  'React',
-  'JavaScript',
-  'TypeScript',
-  'Go',
-  '数据分析',
-  '机器学习'
-]
+
 
 
 /* =========================
@@ -128,11 +109,14 @@ const saveRecommendHistory = (data) => {
       title: `${scope} 岗位推荐`,
       summary: data.message,
       meta: {
+        数据范围: data?.dataset?.dataset_label || '未标注',
         目标岗位: `${data.target_sample_count} 条`,
         匹配岗位: `${data.total} 条`,
         已选技能: `${conditions.skills.length} 项`,
       },
       detail: {
+        数据版本: data?.dataset?.dataset_version || '未标注',
+        数据范围: data?.dataset?.dataset_label || '未标注',
         求职条件: scope,
         已选技能: conditions.skills,
         推荐岗位: data.recommendations.slice(0, 5).map(job => (
@@ -263,8 +247,9 @@ const formatSalary = (
         <div class="skills-heading">
           <div>
             <h3>我的技能</h3>
+            <p v-if="skillOptionError" role="status">{{ skillOptionError }}</p>
             <p>
-              选择你已经掌握的技术技能
+              选择你已经掌握的技能，选项随城市和岗位类别变化
             </p>
           </div>
 
