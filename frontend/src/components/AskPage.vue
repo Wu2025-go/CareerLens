@@ -3,11 +3,9 @@ import { onBeforeUnmount, ref } from 'vue'
 import { saveHistoryRecord } from '../utils/history'
 import JobGoalFields from './JobGoalFields.vue'
 import SkillGapPanel from './SkillGapPanel.vue'
-import StatisticsPanel from './StatisticsPanel.vue'
-import { citationLinks } from '../utils/citations.js'
-import { buildAskPayload, buildGoal, createGoal, describeGoal, postJobGoal, splitEnteredSkills } from '../utils/jobGoal'
+import { buildGoal, createGoal, describeGoal, postJobGoal, splitEnteredSkills } from '../utils/jobGoal'
 
-const emit = defineEmits(['recommend-with-goal', 'view-trends'])
+const emit = defineEmits(['recommend-with-goal'])
 
 
 /* =========================
@@ -34,7 +32,7 @@ onBeforeUnmount(() => activeController?.abort())
 const isModelAnswer = (data) => data?.answer_mode === 'rag' && data?.reference_integrity_checked === true
 const answerModeLabel = (data) => isModelAnswer(data)
   ? '岗位检索 + 大模型生成'
-  : data?.answer_mode === 'statistics' ? '完整筛选样本的程序统计' : data?.needs_confirmation ? '等待确认筛选条件' : '岗位检索与规则统计'
+  : '岗位检索与规则统计'
 
 
 /* =========================
@@ -43,9 +41,7 @@ const answerModeLabel = (data) => isModelAnswer(data)
 
 const examples = [
   '我是在校本科生，会 Spring Boot 和 MyBatis，想找深圳 Java 后端实习。',
-  '北京数据分析岗位的平均薪资是多少？',
-  '北京和上海数据分析岗位的薪资比较',
-  '杭州内容运营实习岗位有多少？',
+  '广州 Python 数据分析岗位需要哪些技能？',
   '深圳 Java 后端开发岗位需要哪些技能？',
   '北京 Python 岗位有哪些？',
   '数据分析岗位常见技能有哪些？'
@@ -63,7 +59,7 @@ const fillQuestion = (text) => {
 
 const parseSkills = (value) => {
   return String(value || '')
-    .split(/[|,，、;；]+/)
+    .split(/[|,，、;/；]+/)
     .map(skill => skill.trim())
     .filter(Boolean)
 }
@@ -113,7 +109,6 @@ const saveAskHistory = (
         '已完成岗位知识库检索。',
 
       meta: {
-        数据范围: data?.dataset?.dataset_label || '未标注',
         回答方式: answerModeLabel(data),
         城市:
           data?.target_city ||
@@ -131,8 +126,6 @@ const saveAskHistory = (
       },
 
       detail: {
-        数据版本: data?.dataset?.dataset_version || '未标注',
-        数据范围: data?.dataset?.dataset_label || '未标注',
         求职条件: data.conditions ? describeGoal(data.conditions) : '普通问答',
         回答方式: answerModeLabel(data),
         使用模型: isModelAnswer(data) ? (data.model_reported || data.model || '未提供') : '未使用模型生成',
@@ -254,7 +247,47 @@ const askQuestion = async (confirmedGoal = null) => {
   const waitTimer = setTimeout(() => controller.abort(), 60000)
 
   try {
-    const data = await postJobGoal('/api/ask', buildAskPayload(text, confirmedGoal), controller.signal)
+    const response = await fetch(
+      '/api/ask',
+      {
+        method: 'POST',
+        signal: controller.signal,
+
+        headers: {
+          'Content-Type':
+            'application/json'
+        },
+
+        body: JSON.stringify({
+          question: text,
+          ...(confirmedGoal ? { goal: confirmedGoal } : {}),
+        })
+      }
+    )
+
+    if (!response.ok) {
+      let detail = ''
+
+      try {
+        const errorData =
+          await response.json()
+
+        detail = typeof errorData?.detail === 'string'
+          ? errorData.detail
+          : '问题格式不正确，请输入 1～2000 字的问题。'
+
+      } catch {
+        // 无法解析错误响应时忽略
+      }
+
+      throw new Error(
+        detail ||
+        '就业问答请求失败'
+      )
+    }
+
+    const data =
+      await response.json()
 
     /*
       先正常展示问答结果
@@ -502,7 +535,6 @@ const formatSalary = (
       "
     >
 
-      <StatisticsPanel v-if="result.statistics" :result="result" @view-trends="emit('view-trends', $event)" @recommend="emit('recommend-with-goal', $event)" />
       <section class="answer-card">
 
         <!-- 回答标题 -->
@@ -510,7 +542,7 @@ const formatSalary = (
         <div class="answer-header">
 
           <span class="ai-icon">
-            {{ isModelAnswer(result) ? 'RAG' : result.statistics ? '统计' : result.needs_confirmation ? '确认' : '检索' }}
+            {{ isModelAnswer(result) ? 'RAG' : '检索' }}
           </span>
 
 
@@ -533,11 +565,11 @@ const formatSalary = (
           <p v-for="(block, index) in result.answer_blocks" :key="index">
             {{ block.text }}
             <a
-              v-for="citation in citationLinks(block.citations)"
-              :key="citation.job_id"
+              v-for="citation in block.citations"
+              :key="`${citation.job_id}-${citation.quote}`"
               class="citation-link"
               :href="`#evidence-${citation.job_id}`"
-              :title="citation.quotes.join('\n')"
+              :title="citation.quote"
               :aria-label="`查看 ${citation.job_id} 岗位原文`"
             >[{{ citation.job_id }}]</a>
           </p>
@@ -547,12 +579,8 @@ const formatSalary = (
         </p>
 
         <p v-if="result.ai_notice" class="mode-notice" role="status">{{ result.ai_notice }}</p>
-        <p v-if="result.dataset" class="generation-meta">
-          本次数据范围：{{ result.dataset.dataset_label }} · 数据版本 {{ result.dataset.dataset_version }}
-        </p>
-        <p v-if="!result.needs_confirmation" class="generation-meta">
-          <template v-if="result.statistics">统计范围：全部 {{ result.matched_count || 0 }} 条符合条件的岗位样本</template>
-          <template v-else>检索命中 {{ result.matched_count || 0 }} 条 · 展示 {{ result.matches?.length || 0 }} 条</template>
+        <p class="generation-meta">
+          检索命中 {{ result.matched_count || 0 }} 条 · 展示 {{ result.matches?.length || 0 }} 条
           <template v-if="isModelAnswer(result)">
             · 模型参考 {{ result.evidence_count }} 条
             · {{ result.model_reported || result.model }}
@@ -565,7 +593,7 @@ const formatSalary = (
         <p v-if="result.can_expand_city" class="mode-notice">
           {{ goalForm ? '如需查看其他城市，请勾选确认区的扩展选项，再重新分析。' : '如需调整条件或查看其他城市，请先点击「整理为求职条件」。' }}
         </p>
-        <div v-if="!result.statistics && result.conditions && result.target_sample_count" class="goal-actions">
+        <div v-if="result.conditions && result.target_sample_count" class="goal-actions">
           <button type="button" class="goal-trigger" @click="emit('recommend-with-goal', result.conditions)">用本次分析条件匹配岗位</button>
         </div>
         <SkillGapPanel v-if="result.target_sample_count && result.conditions?.skills?.length" :analysis="result" class="ask-gaps" />
@@ -833,7 +861,7 @@ const formatSalary = (
             <details :id="`evidence-${job.job_id}`" class="job-source" open>
               <summary>溯源原文 · {{ job.job_id || '岗位记录' }}</summary>
               <p class="source-meta">
-                数据集：{{ result.dataset?.dataset_file || job.dataset || 'jobs_sample.csv' }} · {{ job.data_origin === 'synthetic' ? '仿真测试记录' : job.data_origin === 'real' ? '实采样本记录' : '来源未标注' }}
+                数据集：{{ job.dataset || 'jobs_sample.csv' }}
                 · 来源标记：{{ job.source || '未提供' }}
                 · 发布日期：{{ job.publish_date || '未提供' }}
               </p>
@@ -853,7 +881,7 @@ const formatSalary = (
       ====================== -->
 
       <section
-        v-else-if="!result.statistics && !result.needs_confirmation"
+        v-else
         class="empty-card"
       >
 

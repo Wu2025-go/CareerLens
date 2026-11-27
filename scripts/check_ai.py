@@ -13,14 +13,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument("--question", default="深圳 Java 后端开发岗位需要哪些技能？")
-    parser.add_argument("--dataset-scope", choices=['real', 'synthetic', 'all'], default='real',
-                        help="real=实采，synthetic=仿真，all=混合测试；与页面范围对应")
     parser.add_argument("--output", type=Path, help="可选：保存不含密钥的本次结果，便于补充技术文档")
     args = parser.parse_args()
     print("将向正在运行的后端发送1次问答；配置有效且检索有结果时会调用模型。")
     request = Request(args.url.rstrip("/") + "/api/ask", method="POST",
         headers={"Content-Type": "application/json"},
-        data=json.dumps({"question": args.question, "dataset_scope": args.dataset_scope}, ensure_ascii=False).encode("utf-8"))
+        data=json.dumps({"question": args.question}, ensure_ascii=False).encode("utf-8"))
     started = time.monotonic()
     try:
         with urlopen(request, timeout=55) as response:
@@ -30,8 +28,6 @@ def main():
         return 1
     record = {
         "question": args.question,
-        "dataset": result.get('dataset'),
-        "filtered_claim_count": result.get('filtered_claim_count', 0),
         "answer_mode": result.get("answer_mode"),
         "ai_status": result.get("ai_status"),
         "model": result.get("model"),

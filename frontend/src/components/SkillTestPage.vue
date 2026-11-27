@@ -1,5 +1,4 @@
 <script setup>
-import { useSkillOptions } from '../utils/dataset'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import JobGoalFields from './JobGoalFields.vue'
 import SkillGapPanel from './SkillGapPanel.vue'
@@ -15,7 +14,28 @@ const emit = defineEmits(['recommend-with-skills'])
    可选技能
 ========================= */
 
-
+const skillOptions = [
+  'Java',
+  'Python',
+  'SQL',
+  'Linux',
+  'Git',
+  'Spring',
+  'Spring Boot',
+  'Spring Cloud',
+  'MySQL',
+  'Redis',
+  'Kafka',
+  'Docker',
+  'K8s',
+  'Vue',
+  'React',
+  'JavaScript',
+  'Go',
+  '数据分析',
+  '数据清洗',
+  '机器学习'
+]
 
 
 /* =========================
@@ -25,7 +45,6 @@ const emit = defineEmits(['recommend-with-skills'])
 const selectedSkills = ref([])
 
 const goal = ref(createGoal())
-const { skillOptions, skillOptionError } = useSkillOptions(goal)
 
 const customSkill = ref('')
 
@@ -273,7 +292,6 @@ const saveSkillHistory = (
         `本次目标岗位技能覆盖分为 ${score} 分，评级：${level}。`,
 
       meta: {
-        数据范围: data?.dataset?.dataset_label || '未标注',
         城市:
           city,
 
@@ -288,8 +306,6 @@ const saveSkillHistory = (
       },
 
       detail: {
-        数据版本: data?.dataset?.dataset_version || '未标注',
-        数据范围: data?.dataset?.dataset_label || '未标注',
         求职条件: describeGoal(data.conditions),
 
         目标岗位: `${data.target_sample_count} 条`,
@@ -515,8 +531,6 @@ const formatSalary = (
 
       </div>
 
-
-      <p v-if="skillOptionError" role="status">{{ skillOptionError }}</p>
 
       <!-- 已选技能 -->
 
