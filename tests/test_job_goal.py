@@ -41,7 +41,7 @@ class JobGoalTests(unittest.TestCase):
     def test_same_goal_across_questions_assessment_and_recommendations(self):
         parsed = self.post('job-goal/parse', {'question': QUESTION})
         self.assertEqual(parsed['parse_mode'], 'rules')
-        self.assertEqual(parsed['conditions'], {**PROFILE, 'keyword': 'Java', 'min_salary': None, 'expand_city': False})
+        self.assertEqual(parsed['conditions'], {**PROFILE, 'dataset_scope': 'real', 'keyword': 'Java', 'min_salary': None, 'expand_city': False})
         recommendation = self.post('recommend', parsed['conditions'])
         assessment = self.post('skill-match', parsed['conditions'])
         answer = self.post('ask', {'question': QUESTION, 'goal': parsed['conditions']})
