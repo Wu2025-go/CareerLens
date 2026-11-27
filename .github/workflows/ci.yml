@@ -86,8 +86,6 @@ jobs:
               raise SystemExit("Backend did not become ready within 30 seconds.")
           PY
           python -m unittest discover -s tests -p "test_*.py" -v
-          python scripts/validate_jobs.py
-          python scripts/evaluate_questions.py
 
       - name: Show backend log on failure
         if: failure()

@@ -234,14 +234,14 @@ class TestRecommendationRules(unittest.TestCase):
         self.assertEqual(result["total"], 0)
         self.assertEqual(result["recommendations"], [])
 
-    def test_21_default_browsing_does_not_claim_personal_score(self):
-        """未填写个人技能时仍可浏览，但不能展示虚构的个人匹配分。"""
+    def test_21_default_browsing_has_bounded_score(self):
+        """未填写条件时仍可浏览，展示分数保持在0至100范围内。"""
         result = self.recommend()
         self.assertEqual(result["total"], 1)
-        job = result["recommendations"][0]
-        self.assertIsNone(job["match_score"])
-        self.assertIsNone(job["skill_coverage"])
-        self.assertFalse(job["score_applicable"])
+        score = result["recommendations"][0]["match_score"]
+        self.assertIsInstance(score, int)
+        self.assertGreaterEqual(score, 0)
+        self.assertLessEqual(score, 100)
 
     def test_22_missing_skills_not_claimed_as_match(self):
         """岗位未给出技能时，不能确认与用户已选技能有交集。"""

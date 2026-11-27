@@ -24,7 +24,7 @@ def main() -> int:
         print("找不到 npm。请安装 Node.js LTS，然后重新打开终端。", flush=True)
         return 1
 
-    required = ["requirements.txt", "frontend/package-lock.json", "data/sample/jobs_expanded.csv"]
+    required = ["requirements.txt", "frontend/package-lock.json", "data/sample/jobs_sample.csv"]
     missing = [name for name in required if not (PROJECT_ROOT / name).is_file()]
     if missing:
         print("项目文件不完整，请先解压完整源码：" + "、".join(missing), flush=True)

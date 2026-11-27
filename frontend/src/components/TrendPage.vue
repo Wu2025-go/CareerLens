@@ -8,11 +8,6 @@ import {
 } from 'vue'
 
 import echarts from '../utils/charts'
-import JobGoalFields from './JobGoalFields.vue'
-import { createGoal } from '../utils/jobGoal'
-import { datasetUrl } from '../utils/dataset'
-const props = defineProps({ initialGoal: { type: Object, default: null } })
-const goal = ref(createGoal(props.initialGoal))
 
 
 /* =========================================================
@@ -23,7 +18,7 @@ const summary = reactive({
   jobCount: 0,
   cityCount: 0,
   skillCount: 0,
-  avgSalary: null
+  avgSalary: 0
 })
 
 const loading = ref(true)
@@ -618,20 +613,14 @@ const initCharts = () => {
    获取趋势数据
 ========================================================= */
 
-let trendController
-let chartFrame
 const loadTrendData = async () => {
-  trendController?.abort()
-  cancelAnimationFrame(chartFrame)
-  const active = new AbortController()
-  trendController = active
   loading.value = true
   errorMessage.value = ''
 
   try {
     const response =
       await fetch(
-        datasetUrl('/api/trends', goal.value), { signal: active.signal }
+        '/api/trends'
       )
 
     if (!response.ok) {
@@ -663,7 +652,10 @@ const loadTrendData = async () => {
         data.summary?.skill_count
       ) || 0
 
-    summary.avgSalary = data.summary?.avg_salary ?? null
+    summary.avgSalary =
+      Number(
+        data.summary?.avg_salary
+      ) || 0
 
 
     /* =========================
@@ -700,7 +692,6 @@ const loadTrendData = async () => {
 
 
   } catch (error) {
-    if (error.name === 'AbortError') return
     console.error(error)
 
     errorMessage.value =
@@ -715,7 +706,7 @@ const loadTrendData = async () => {
       让模板里的图表 div 真正渲染出来。
     */
 
-    if (trendController === active) loading.value = false
+    loading.value = false
   }
 
 
@@ -725,7 +716,7 @@ const loadTrendData = async () => {
     再初始化 ECharts。
   */
 
-  if (trendController === active && !active.signal.aborted && !errorMessage.value) {
+  if (!errorMessage.value) {
     await nextTick()
 
     /*
@@ -733,8 +724,8 @@ const loadTrendData = async () => {
       确保图表容器已经有真实宽高。
     */
 
-    chartFrame = requestAnimationFrame(() => {
-      if (!active.signal.aborted) initCharts()
+    requestAnimationFrame(() => {
+      initCharts()
     })
   }
 }
@@ -767,8 +758,6 @@ onMounted(() => {
 
 
 onBeforeUnmount(() => {
-  trendController?.abort()
-  cancelAnimationFrame(chartFrame)
   window.removeEventListener(
     'resize',
     handleResize
@@ -781,12 +770,6 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="trend-page">
-    <section class="trend-filters">
-      <h2>按求职条件查看样本</h2>
-      <JobGoalFields :model-value="goal" :disabled="loading" @patch="Object.assign(goal, $event)" />
-      <button type="button" :disabled="loading" @click="loadTrendData">{{ loading ? '正在计算…' : '更新图表' }}</button>
-      <p>图表使用与问答、推荐相同的数据范围和筛选条件。月份表示样本发布日期分布。</p>
-    </section>
 
     <!-- ===================================================
          页面标题
@@ -801,7 +784,7 @@ onBeforeUnmount(() => {
         </h1>
 
         <p>
-          查看当前岗位样本的数量、技能、城市与薪资分布
+          从岗位数量、热门技能、城市分布和薪资水平洞察就业市场变化
         </p>
 
       </div>
@@ -915,15 +898,15 @@ onBeforeUnmount(() => {
         <div class="summary-card">
 
           <p>
-            样本薪资参考均值
+            平均薪资
           </p>
 
           <strong>
-            {{ summary.avgSalary == null ? '暂无有效薪资' : `${summary.avgSalary}K/月` }}
+            ¥{{ summary.avgSalary }}K
           </strong>
 
           <span>
-            岗位薪资区间中点的平均值
+            岗位月薪平均水平
           </span>
 
         </div>
@@ -1227,9 +1210,6 @@ onBeforeUnmount(() => {
 
 
 <style scoped>
-.trend-filters { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 22px; margin-bottom: 22px; }
-.trend-filters h2 { margin: 0 0 16px; font-size: 18px; }.trend-filters button { margin-top: 16px; padding: 10px 16px; background: #4f46e5; color: #fff; border: 0; border-radius: 7px; cursor: pointer; }.trend-filters p { font-size: 12px; color: #64748b; line-height: 1.7; }
-
 
 /* =========================================================
    基础

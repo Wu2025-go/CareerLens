@@ -50,3 +50,13 @@ data/raw/*
 *.sqlite3-journal
 *.sqlite3-wal
 *.sqlite3-shm
+.env
+.env.*
+!.env.example
+.venv/
+node_modules/
+__pycache__/
+*.pyc
+*.sqlite3
+*.db
+frontend/dist/

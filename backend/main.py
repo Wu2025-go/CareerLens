@@ -1,29 +1,24 @@
 from pathlib import Path
-import os
 from collections import Counter
 import re
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend.datasets import DatasetScope, read_dataset, scope_dataset, attach_metadata, dataset_metadata
-from backend.statistics import StatisticsRequest, build_statistics, statistics_intent
 from backend.rag import augment_answer
 from backend.auth import install_auth
 from backend.goal_assistant import (
     GoalQuestion, interpret_job_goal, make_practice_plan, parse_goal_rules, retrieve_for_goal,
 )
 from backend.job_matching import (
-    JobGoal, JobRecommendRequest, RecruitmentType, SkillMatchRequest, analyze_job_goal,
+    JobGoal, JobRecommendRequest, SkillMatchRequest, analyze_job_goal,
     clean_text, contains_keyword, matching_options, safe_float, salary_to_k, split_skills,
-    select_job_pool, normalize_skill_key,
 )
 
 
 class AskRequest(BaseModel):
-    dataset_scope: DatasetScope = 'real'
     question: str = Field(min_length=1, max_length=2000)
     goal: JobGoal | None = None
 
@@ -31,7 +26,7 @@ class AskRequest(BaseModel):
 app = FastAPI(
     title="CareerLens API",
     description="CareerLens 职见后端服务",
-    version="0.8.1"
+    version="0.7.0"
 )
 
 install_auth(app)
@@ -53,27 +48,47 @@ app.add_middleware(
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-CSV_PATH = Path(os.environ.get('CAREERLENS_JOBS_PATH') or BASE_DIR / 'data' / 'sample' / 'jobs_expanded.csv')
-
+CSV_PATH = (
+    BASE_DIR
+    / "data"
+    / "sample"
+    / "jobs_sample.csv"
+)
 
 def load_jobs():
-    return read_dataset(CSV_PATH)
+    if not CSV_PATH.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"找不到数据文件：{CSV_PATH}"
+        )
 
+    try:
+        return pd.read_csv(CSV_PATH)
 
-def scoped_jobs(scope='real'):
-    return scope_dataset(load_jobs(), scope)
+    except UnicodeDecodeError:
+        try:
+            return pd.read_csv(
+                CSV_PATH,
+                encoding="gb18030"
+            )
+
+        except UnicodeDecodeError:
+            return pd.read_csv(
+                CSV_PATH,
+                encoding="gbk"
+            )
 
 
 @app.get("/")
 def root():
     return {
         "message": "CareerLens API is running",
-        "version": "0.8.1"
+        "version": "0.7.0"
     }
 
 @app.get("/api/overview")
-def get_overview(dataset_scope: DatasetScope = 'real'):
-    df = scoped_jobs(dataset_scope)
+def get_overview():
+    df = load_jobs()
 
     job_count = len(df)
 
@@ -103,21 +118,21 @@ def get_overview(dataset_scope: DatasetScope = 'real'):
             1
         )
         if salary_values
-        else None
+        else 0
     )
 
     hot_industry = df["job_category"].mode().iloc[0] if "job_category" in df.columns and not df["job_category"].mode().empty else "暂无数据"
 
-    return attach_metadata({
+    return {
         "job_count": int(job_count),
         "avg_salary": avg_salary,
         "hot_industry": hot_industry
-    }, df)
+    }
 
 
 @app.get("/api/dashboard")
-def get_dashboard(dataset_scope: DatasetScope = 'real'):
-    df = scoped_jobs(dataset_scope)
+def get_dashboard():
+    df = load_jobs()
 
  
 
@@ -252,7 +267,7 @@ def get_dashboard(dataset_scope: DatasetScope = 'real'):
                 in month_counts.values
             ]
 
-    return attach_metadata({
+    return {
         "cities": cities,
         "salary_distribution":
             salary_distribution,
@@ -261,7 +276,7 @@ def get_dashboard(dataset_scope: DatasetScope = 'real'):
             "values": values
         },
         "skills": skills
-    }, df)
+    }
 
 
 def retrieve_question(request: AskRequest, df=None):
@@ -273,7 +288,7 @@ def retrieve_question(request: AskRequest, df=None):
             detail="问题不能为空"
         )
 
-    df = scoped_jobs(request.dataset_scope) if df is None else df
+    df = load_jobs() if df is None else df
 
     target_city = None
 
@@ -506,8 +521,7 @@ def retrieve_question(request: AskRequest, df=None):
             "job_description": job_description,
             "source": clean_text(row.get("source")),
             "publish_date": clean_text(row.get("publish_date")),
-            "dataset": df.attrs.get('dataset_file', 'jobs_sample.csv'),
-            "data_origin": clean_text(row.get('data_origin')) or 'unverified',
+            "dataset": "jobs_sample.csv"
         }
 
 
@@ -630,69 +644,27 @@ def ask_question(request: AskRequest):
     question = request.question.strip()
     if not question:
         raise HTTPException(400, '问题不能为空')
-    scope = request.goal.dataset_scope if request.goal is not None else request.dataset_scope
-    df = scoped_jobs(scope)
-    intent = statistics_intent(question)
-    options = matching_options(df)
-    goal, ambiguous = parse_goal_rules(question, options)
-    compared = [city for city in options['cities'] if city in question] if intent == 'comparison' else []
-    if compared and request.goal is None:
-        ambiguous = [field for field in ambiguous if field != 'city']
-        goal['city'] = None
+    df = load_jobs()
     if request.goal is not None:
-        goal, ambiguous = request.goal.model_dump(), []
-        compared = []
-    if ambiguous:
-        labels = {'city': '城市', 'job_category': '岗位类别（运营可选内容运营或电商运营）',
-                  'education': '本人学历', 'recruitment_type': '招聘类型'}
-        answer = '请先确认' + '、'.join(labels[field] for field in ambiguous) + '，再按确认后的条件分析。'
-        if intent == 'competition':
-            answer = '现有数据没有投递人数、招聘名额或录用率，无法判断竞争程度。' + answer
-        return attach_metadata({'answer': answer, 'answer_mode': 'rules', 'ai_status': 'needs_confirmation',
-                               'needs_confirmation': True, 'ambiguous_fields': ambiguous,
-                               'matched_count': 0, 'matches': [], 'top_skills': [], 'citations': []}, df)
-    goal['dataset_scope'] = scope
-    parsed = JobGoal(**goal)
-    if intent:
-        return build_statistics(df, parsed, intent=intent, compared_cities=compared)
-    if request.goal is not None or any(goal.get(key) for key in ('job_category', 'recruitment_type', 'education', 'min_salary', 'skills', 'keyword')):
-        retrieved = retrieve_for_goal(df, parsed, confirmed=request.goal is not None)
+        retrieved = retrieve_for_goal(df, request.goal)
     else:
-        retrieved = retrieve_question(request, df)
-    return attach_metadata(augment_answer(question, retrieved), df)
+        goal, ambiguous = parse_goal_rules(question, matching_options(df))
+        if ambiguous:
+            retrieved = {
+                'answer': '问题里有需要确认的筛选条件。请点击「整理为求职条件」，核对后再分析。',
+                'matched_count': 0, 'matches': [], 'top_skills': [],
+            }
+        elif any(goal[key] for key in ('job_category', 'recruitment_type', 'education', 'min_salary', 'skills', 'keyword')):
+            retrieved = retrieve_for_goal(df, JobGoal(**goal), confirmed=False)
+        else:
+            # 普通知识库问答继续支持未预设的技术词。
+            retrieved = retrieve_question(request, df)
+    return augment_answer(question, retrieved)
 
 
-@app.get('/api/dataset')
-def dataset_info(dataset_scope: DatasetScope = 'real'):
-    return dataset_metadata(scoped_jobs(dataset_scope))
-
-
-@app.get('/api/job-goal/options')
-def job_goal_options(dataset_scope: DatasetScope = 'real'):
-    df = scoped_jobs(dataset_scope)
-    return attach_metadata(matching_options(df), df)
-
-
-@app.get('/api/skills')
-def skill_catalog(dataset_scope: DatasetScope = 'real', city: str | None = Query(None, max_length=40),
-                  job_category: str | None = Query(None, max_length=60), recruitment_type: RecruitmentType | None = None):
-    df = scoped_jobs(dataset_scope)
-    pool = select_job_pool(df, JobGoal(city=city, job_category=job_category, recruitment_type=recruitment_type))
-    counts, names = Counter(), {}
-    for job in pool.jobs:
-        for name in job['skills']:
-            key = normalize_skill_key(name)
-            counts[key] += 1
-            names.setdefault(key, name)
-    return attach_metadata({'sample_count': len(pool.jobs), 'skills': [
-        {'name': names[key], 'count': count} for key, count in counts.most_common(30)
-    ]}, df)
-
-
-@app.post('/api/statistics')
-def query_statistics(request: StatisticsRequest):
-    return build_statistics(scoped_jobs(request.dataset_scope), request,
-                            intent=statistics_intent(request.question) or 'salary')
+@app.get("/api/job-goal/options")
+def job_goal_options():
+    return matching_options(load_jobs())
 
 
 @app.post('/api/job-goal/parse')
@@ -700,18 +672,14 @@ def parse_job_goal(request: GoalQuestion):
     question = request.question.strip()
     if not question:
         raise HTTPException(400, '请输入求职目标')
-    df = scoped_jobs(request.dataset_scope)
-    result = interpret_job_goal(df, question)
-    result['conditions']['dataset_scope'] = request.dataset_scope
-    return attach_metadata(result, df)
+    return interpret_job_goal(load_jobs(), question)
 
 
 @app.post('/api/job-goal/plan')
 def job_goal_plan(request: SkillMatchRequest):
     if not any(clean_text(skill) for skill in request.skills):
         raise HTTPException(400, '请先填写已掌握的技能')
-    df = scoped_jobs(request.dataset_scope)
-    return attach_metadata(make_practice_plan(df, request), df)
+    return make_practice_plan(load_jobs(), request)
 
 
 @app.post("/api/skill-match")
@@ -719,8 +687,7 @@ def skill_match(request: SkillMatchRequest):
     if not any(clean_text(skill) for skill in request.skills):
         raise HTTPException(status_code=400, detail="请至少选择一项技能")
 
-    df = scoped_jobs(request.dataset_scope)
-    analysis = analyze_job_goal(df, request, coverage_only=True)
+    analysis = analyze_job_goal(load_jobs(), request, coverage_only=True)
     jobs = analysis["recommendations"][:5]
     score = round(sum(job["match_score"] for job in jobs) / len(jobs)) if jobs else 0
     if not analysis["target_sample_count"]:
@@ -738,7 +705,7 @@ def skill_match(request: SkillMatchRequest):
     else:
         level = "可优先补技能"
 
-    return attach_metadata({
+    return {
         **analysis,
         "user_skills": analysis["conditions"]["skills"],
         "target_city": analysis["conditions"]["city"],
@@ -749,27 +716,17 @@ def skill_match(request: SkillMatchRequest):
             if jobs else analysis["message"]
         ),
         "recommended_jobs": jobs,
-    }, df)
+    }
 
 
 @app.post("/api/recommend")
 def recommend_jobs(request: JobRecommendRequest):
-    df = scoped_jobs(request.dataset_scope)
-    return attach_metadata(analyze_job_goal(df, request), df)
+    return analyze_job_goal(load_jobs(), request)
 
 
 @app.get("/api/trends")
-def get_trends(dataset_scope: DatasetScope = 'real', city: str | None = Query(None, max_length=40),
-               job_category: str | None = Query(None, max_length=60),
-               recruitment_type: RecruitmentType | None = None,
-               education: str | None = Query(None, max_length=40),
-               keyword: str | None = Query(None, max_length=120),
-               min_salary: float | None = Query(None, ge=0, allow_inf_nan=False)):
-    df = scoped_jobs(dataset_scope)
-    goal = JobGoal(city=city, job_category=job_category, recruitment_type=recruitment_type, education=education, keyword=keyword, min_salary=min_salary)
-    if any(value is not None for value in (city, job_category, recruitment_type, education, keyword, min_salary)):
-        ids = {job['job_id'] for job in select_job_pool(df, goal).jobs}
-        df = df.loc[df.job_id.isin(ids)].copy()
+def get_trends():
+    df = load_jobs()
 
 
     monthly_trend = []
@@ -944,11 +901,11 @@ def get_trends(dataset_scope: DatasetScope = 'real', city: str | None = Query(No
             1
         )
         if salary_values
-        else None
+        else 0
     )
 
 
-    return attach_metadata({
+    return {
         "summary": {
             "job_count":
                 int(len(df)),
@@ -984,4 +941,4 @@ def get_trends(dataset_scope: DatasetScope = 'real', city: str | None = Query(No
 
         "city_salary":
             city_salary
-    }, df)
+    }

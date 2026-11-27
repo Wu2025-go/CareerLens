@@ -1,5 +1,3 @@
-import { datasetScope } from './dataset.js'
-
 export const createGoal = (input) => ({
   city: input?.city ?? '',
   job_category: input?.job_category ?? '',
@@ -20,13 +18,12 @@ export const buildGoal = (form, skills) => {
     throw new Error('最多填写 40 项技能，每项不超过 80 个字符。')
   }
   return {
-    dataset_scope: datasetScope.value,
     city: form.city || null,
     job_category: form.job_category || null,
     recruitment_type: form.recruitment_type || null,
     keyword: form.keyword?.trim() || null,
     education: form.education || null,
-    min_salary: salary,
+    min_salary: salary || null,
     expand_city: Boolean(form.expand_city),
     skills: unique,
   }
@@ -43,17 +40,11 @@ export const describeGoal = (goal = {}) => [
 
 export const splitEnteredSkills = (value) => value.split(/[，,、;；|\n]+/).map(item => item.trim()).filter(Boolean)
 
-export const buildAskPayload = (question, goal = null) => ({
-  question,
-  dataset_scope: goal?.dataset_scope || datasetScope.value,
-  ...(goal ? { goal } : {}),
-})
-
 export async function postJobGoal(path, data, signal) {
   const response = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...data, dataset_scope: data.dataset_scope || datasetScope.value }),
+    body: JSON.stringify(data),
     signal,
   })
   const result = await response.json().catch(() => null)

@@ -88,52 +88,6 @@ class RagTests(unittest.TestCase):
         self.assertEqual(result["matched_count"], 7)
         self.assertNotIn(TEST_KEY, json.dumps(result))
 
-    def test_universal_job_requirement_is_not_presented_as_verified_fact(self):
-        for text in ['三个深圳Java后端样本都要求Java基础。', '所有岗位需要掌握Python。',
-                     '这些岗位均涉及SQL。', '每个岗位要求熟练使用SQL。']:
-            with self.subTest(text=text):
-                doc = document()
-                doc['claims'][0]['text'] = text
-                result, _ = self.respond(completion(doc))
-                self.assert_rules(result, 'unsupported_generalization')
-                self.assertEqual(result['filtered_claim_count'], 1)
-
-    def test_filtering_one_claim_preserves_supported_claim_and_its_citations(self):
-        doc = document()
-        bad = {'text': '三个样本都要求Linux基础。', 'citations': [
-            {'job_id': 'JOB_0002', 'quote': 'Python、Linux'},
-        ]}
-        doc['claims'].insert(0, bad)
-        result, _ = self.respond(completion(doc))
-        self.assertEqual(result['answer_mode'], 'rag')
-        self.assertEqual(result['filtered_claim_count'], 1)
-        self.assertEqual(len(result['answer_blocks']), 1)
-        self.assertEqual({item['job_id'] for item in result['citations']}, {'JOB_0001'})
-        self.assertNotIn(bad['text'], result['answer'])
-        self.assertIn('已隐藏 1 段', result['ai_notice'])
-
-    def test_advice_to_check_each_job_does_not_assert_universal_requirement(self):
-        doc = document()
-        doc['claims'][0]['text'] = '建议逐个核对每个岗位的要求，再准备Python数据清洗练习。'
-        result, _ = self.respond(completion(doc))
-        self.assertEqual(result['answer_mode'], 'rag')
-        self.assertEqual(result['filtered_claim_count'], 0)
-
-    def test_distinct_quotes_from_same_job_remain_available(self):
-        doc = document()
-        doc['claims'][0]['citations'].append({'job_id': 'JOB_0001', 'quote': 'Python、SQL'})
-        result, _ = self.respond(completion(doc))
-        self.assertEqual(result['answer_mode'], 'rag')
-        self.assertEqual(len(result['answer_blocks'][0]['citations']), 2)
-        self.assertEqual(len(result['citations']), 2)
-
-    def test_specific_job_fact_is_not_rejected_as_generalization(self):
-        doc = document()
-        doc['claims'][0]['text'] = '此岗位原文要求使用Python完成数据清洗与分析。'
-        result, _ = self.respond(completion(doc))
-        self.assertEqual(result['answer_mode'], 'rag')
-        self.assertEqual(result['filtered_claim_count'], 0)
-
     def test_wire_request_contains_evidence_but_not_key_in_prompt(self):
         _, calls = self.respond()
         request = calls[0]

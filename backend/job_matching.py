@@ -10,8 +10,6 @@ import pandas as pd
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
-from backend.datasets import DatasetScope
-
 
 def clean_text(value):
     if value is None:
@@ -54,7 +52,7 @@ def split_skills(value):
         return []
 
     parts = re.split(
-        r"[|,，、;；\n]+",
+        r"[|,，、;/；]+",
         text
     )
 
@@ -237,7 +235,6 @@ SkillName = Annotated[str, Field(max_length=80)]
 
 
 class JobGoal(BaseModel):
-    dataset_scope: DatasetScope = 'real'
     city: str | None = Field(default=None, max_length=40)
     job_category: str | None = Field(default=None, max_length=60)
     recruitment_type: RecruitmentType | None = None
@@ -264,8 +261,7 @@ def matching_options(df):
         normalize = normalize_city if column == 'city' else clean_text
         return sorted({normalize(value) for value in df[column]} - {''})
 
-    skill_names = sorted({name for value in df.get('skills', []) for name in split_skills(value)})
-    return {'cities': values('city'), 'categories': values('job_category'), 'skill_names': skill_names}
+    return {'cities': values('city'), 'categories': values('job_category')}
 
 
 def recruitment_type_of(title):
@@ -307,7 +303,6 @@ def normalize_goal(request):
     if education and get_education_rank(education) is None:
         raise HTTPException(400, '无法识别该学历，请选择高中、中专、大专、本科、硕士或博士。')
     return {
-        'dataset_scope': request.dataset_scope,
         'city': normalize_city(city) or None,
         'job_category': clean_text(request.job_category) or None,
         'recruitment_type': request.recruitment_type,
@@ -368,7 +363,6 @@ def select_job_pool(df, request):
                 'salary_max': upper,
                 'source': clean_text(row.get('source')),
                 'publish_date': clean_text(row.get('publish_date')),
-                'data_origin': clean_text(row.get('data_origin')) or 'unverified',
                 'skills': skills,
                 '_keyword_points': points,
                 '_keyword_reason': reason,
@@ -437,10 +431,7 @@ def rank_jobs(pool, *, coverage_only=False, include_unmatched=False):
         else:
             score = round(points / active_weight * 100) if active_weight else 50
         item = {key: value for key, value in job.items() if not key.startswith('_')}
-        item.update(matched_skills=matched, missing_skills=missing,
-                    match_score=score if user_keys else None,
-                    skill_coverage=round(coverage * 100, 2) if user_keys else None,
-                    score_applicable=bool(user_keys), reasons=reasons)
+        item.update(matched_skills=matched, missing_skills=missing, match_score=score, reasons=reasons)
         # 用未四舍五入的覆盖率排序，显示分相同时再比较已掌握的数量。
         sort_score = coverage if by_coverage and user_keys else score
         ranked.append(((-sort_score, -len(matched), job['job_title'], job['job_id']), item))
@@ -468,7 +459,7 @@ def skill_evidence(pool):
             if len(records) < 3 and job['job_id']:
                 records.append({
                     field: job[field] for field in (
-                        'job_id', 'job_title', 'company_name', 'city', 'source', 'publish_date', 'data_origin',
+                        'job_id', 'job_title', 'company_name', 'city', 'source', 'publish_date',
                     )
                 } | {'skill': name})
     ordered = sorted(counts, key=lambda key: (-counts[key], key))
